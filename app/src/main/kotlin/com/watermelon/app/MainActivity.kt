@@ -99,20 +99,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startFileLogging() {
-        val logFile = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
-            "watermelon_log_${System.currentTimeMillis()}.txt"
-        )
-        Thread {
-            try {
-                val process = Runtime.getRuntime().exec("logcat -d -v time")
-                val log = process.inputStream.bufferedReader().readText()
-                logFile.writeText(log)
-            } catch (e: Exception) {
-                logFile.writeText("Logger failed: ${e.message}")
-            }
-        }.start()
-    }
+    val logFile = java.io.File(
+        android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS),
+        "watermelon_log_${System.currentTimeMillis()}.txt"
+    )
+    Thread {
+        try {
+            Thread.sleep(6000)
+            val process = Runtime.getRuntime().exec("logcat -d -v time")
+            logFile.writeText(process.inputStream.bufferedReader().readText())
+        } catch (e: Exception) {
+            logFile.writeText("Logger failed: ${e.message}")
+        }
+    }.start()
+}
 
     private object Routes {
         const val FOLDERS = "folders"

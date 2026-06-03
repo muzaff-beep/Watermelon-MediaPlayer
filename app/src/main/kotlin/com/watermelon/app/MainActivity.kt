@@ -1,6 +1,7 @@
 package com.watermelon.app
 
 import android.os.Bundle
+import android.os.Environment
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import com.watermelon.subtitle.repository.SubtitleRepositoryImpl
 import com.watermelon.ui.screens.FolderBrowserScreen
 import com.watermelon.ui.theme.WatermelonTheme
 import com.watermelon.ui.viewmodel.FolderViewModel
+import java.io.File
 
 /**
  * Single Activity hosting the Compose NavHost. This is the only place concrete
@@ -63,6 +65,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        startFileLogging()
         super.onCreate(savedInstanceState)
         setContent {
             WatermelonTheme {
@@ -93,6 +96,22 @@ class MainActivity : ComponentActivity() {
             }
             composable(Routes.SETTINGS) { /* SettingsScreen bound to DataStore */ }
         }
+    }
+
+    private fun startFileLogging() {
+        val logFile = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+            "watermelon_log_${System.currentTimeMillis()}.txt"
+        )
+        Thread {
+            try {
+                val process = Runtime.getRuntime().exec("logcat -d -v time")
+                val log = process.inputStream.bufferedReader().readText()
+                logFile.writeText(log)
+            } catch (e: Exception) {
+                logFile.writeText("Logger failed: ${e.message}")
+            }
+        }.start()
     }
 
     private object Routes {

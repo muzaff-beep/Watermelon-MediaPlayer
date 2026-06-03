@@ -24,8 +24,15 @@ class Phase1Sweep(private val contentResolver: ContentResolver) {
         val relativePath: String
     )
 
+    @Volatile
+    private var lastUris: List<String> = emptyList()
+
+    /** URIs from the most recent [sweep]; consumed by Phase 2 to know what to enrich. */
+    fun lastSweepUris(): List<String> = lastUris
+
     suspend fun sweep(): List<FolderNode> = withContext(Dispatchers.IO) {
         val rows = queryVideos()
+        lastUris = rows.map { it.uri }
         buildFolderTree(rows)
     }
 

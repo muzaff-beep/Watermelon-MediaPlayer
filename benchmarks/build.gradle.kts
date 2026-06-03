@@ -14,11 +14,10 @@ android {
     }
 
     buildTypes {
-        // Macrobenchmarks must run against a non-debuggable, profileable build.
+        // Debug-only: benchmarks build against the app's debug variant (no signing config).
         create("benchmark") {
             isDebuggable = true
-            signingConfig = getByName("debug").signingConfig
-            matchingFallbacks += listOf("release")
+            matchingFallbacks += listOf("debug")
         }
     }
 

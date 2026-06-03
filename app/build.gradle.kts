@@ -14,17 +14,6 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            // Allow macrobenchmarks to install the release APK on CI emulators.
-            signingConfig = signingConfigs.getByName("debug")
-        }
-    }
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

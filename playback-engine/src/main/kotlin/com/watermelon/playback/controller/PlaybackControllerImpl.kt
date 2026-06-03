@@ -1,5 +1,3 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
-
 package com.watermelon.playback.controller
 
 import android.content.Context
@@ -8,6 +6,7 @@ import android.os.Build
 import androidx.media3.common.MediaItem as Media3Item
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.watermelon.common.controller.PlaybackController
 import com.watermelon.common.model.PlaybackState
@@ -34,6 +33,7 @@ import java.io.FileOutputStream
  * @param screenshotProvider supplies the current surface frame as a Bitmap (PlayerView /
  *                      PlayerSurface getBitmap()); null when no surface is attached.
  */
+@UnstableApi
 class PlaybackControllerImpl(
     private val context: Context,
     private val player: Player,

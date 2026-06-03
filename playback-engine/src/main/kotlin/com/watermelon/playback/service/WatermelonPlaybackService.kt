@@ -1,5 +1,6 @@
 package com.watermelon.playback.service
 
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -12,6 +13,7 @@ import com.watermelon.playback.vhs.VhsTierDetector
  * (Manifest §4.1). The VHS tier probe runs **once** in [onCreate] and is immutable for the
  * session lifetime (Teams §3 Implementation Notes).
  */
+@UnstableApi
 class WatermelonPlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null

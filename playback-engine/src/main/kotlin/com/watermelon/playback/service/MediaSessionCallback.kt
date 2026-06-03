@@ -1,5 +1,6 @@
 package com.watermelon.playback.service
 
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
@@ -12,6 +13,7 @@ import com.google.common.util.concurrent.ListenableFuture
  * Standard player transport commands are delegated to the underlying [Player]; only custom
  * session commands need explicit handling here.
  */
+@UnstableApi
 class MediaSessionCallback(
     private val onScreenshot: () -> String?
 ) : MediaSession.Callback {

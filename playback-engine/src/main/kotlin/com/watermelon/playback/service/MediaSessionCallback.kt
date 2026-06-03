@@ -1,8 +1,8 @@
 package com.watermelon.playback.service
 
-import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -42,11 +42,11 @@ class MediaSessionCallback(
                     val extras = android.os.Bundle().apply { putString(KEY_PATH, path) }
                     SessionResult(SessionResult.RESULT_SUCCESS, extras)
                 } else {
-                    SessionResult(SessionResult.RESULT_ERROR_UNKNOWN)
+                    SessionResult(SessionError.ERROR_UNKNOWN)
                 }
                 Futures.immediateFuture(result)
             }
-            else -> Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+            else -> Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
         }
     }
 

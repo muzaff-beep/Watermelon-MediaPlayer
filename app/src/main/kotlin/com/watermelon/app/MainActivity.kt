@@ -1,5 +1,3 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
-
 package com.watermelon.app
 
 import android.os.Bundle
@@ -7,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -35,6 +34,7 @@ import com.watermelon.ui.viewmodel.FolderViewModel
  * implementations are constructed and wired together (Integration Rule 2). Manual
  * constructor injection — no DI framework (Manifest §3).
  */
+@UnstableApi
 class MainActivity : ComponentActivity() {
 
     // --- Manual dependency graph (created once per Activity) -------------------------------

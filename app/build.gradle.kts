@@ -21,6 +21,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Allow macrobenchmarks to install the release APK on CI emulators.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     buildFeatures { compose = true }

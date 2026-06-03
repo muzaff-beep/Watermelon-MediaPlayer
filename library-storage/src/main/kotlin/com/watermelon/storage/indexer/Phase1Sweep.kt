@@ -2,6 +2,7 @@ package com.watermelon.storage.indexer
 
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.os.Build
 import android.provider.MediaStore
 import com.watermelon.common.model.FolderNode
 import kotlinx.coroutines.Dispatchers
@@ -29,13 +30,18 @@ class Phase1Sweep(private val contentResolver: ContentResolver) {
     }
 
     private fun queryVideos(): List<SweepRow> {
+        // RELATIVE_PATH was added in API 29; fall back to DATA (full path) on API 23-28.
+        val useRelativePath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        val pathColumn = if (useRelativePath) MediaStore.Video.Media.RELATIVE_PATH
+                         else @Suppress("DEPRECATION") MediaStore.Video.Media.DATA
+
         val collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(
             MediaStore.Video.Media._ID,
             MediaStore.Video.Media.DISPLAY_NAME,
             MediaStore.Video.Media.BUCKET_ID,
             MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
-            MediaStore.Video.Media.RELATIVE_PATH
+            pathColumn
         )
         val out = ArrayList<SweepRow>()
         contentResolver.query(
@@ -47,16 +53,22 @@ class Phase1Sweep(private val contentResolver: ContentResolver) {
             val bucketIdCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_ID)
             val bucketNameCol =
                 cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-            val pathCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.RELATIVE_PATH)
+            val pathCol = cursor.getColumnIndexOrThrow(pathColumn)
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
                 val uri = ContentUris.withAppendedId(collection, id).toString()
+                val rawPath = cursor.getString(pathCol) ?: ""
+                // On API < 29 rawPath is the full file path; extract the parent directory name.
+                val relativePath = if (useRelativePath) rawPath
+                    else rawPath.substringBeforeLast('/').substringAfterLast('/').let {
+                        if (it.isEmpty()) rawPath else it
+                    }
                 out += SweepRow(
                     uri = uri,
                     displayName = cursor.getString(nameCol) ?: "",
                     bucketId = cursor.getString(bucketIdCol) ?: "",
                     bucketName = cursor.getString(bucketNameCol) ?: "Unknown",
-                    relativePath = cursor.getString(pathCol) ?: ""
+                    relativePath = relativePath
                 )
             }
         }

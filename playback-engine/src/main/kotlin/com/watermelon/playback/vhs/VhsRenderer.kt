@@ -1,6 +1,7 @@
 package com.watermelon.playback.vhs
 
 import android.content.Context
+import android.os.Build
 import com.watermelon.common.model.VhsTier
 
 /**
@@ -25,10 +26,12 @@ abstract class VhsRenderer(protected val tier: VhsTier) {
 
     companion object {
         /** Factory: build the renderer matching the probed [tier]. */
-        fun create(context: Context, tier: VhsTier): VhsRenderer = when (tier) {
-            VhsTier.A -> AGSLFullPassRenderer(context)
-            VhsTier.B -> AGSLLiteRenderer(context)
-            VhsTier.C -> PNGLegacyOverlayRenderer(context)
+        fun create(context: Context, tier: VhsTier): VhsRenderer = when {
+            tier == VhsTier.A && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                AGSLFullPassRenderer(context)
+            tier == VhsTier.B && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                AGSLLiteRenderer(context)
+            else -> PNGLegacyOverlayRenderer(context)
         }
     }
 }

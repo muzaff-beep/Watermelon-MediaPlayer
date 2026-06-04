@@ -158,7 +158,6 @@ class MainActivity : ComponentActivity() {
         NavHost(navController = navController, startDestination = Routes.FOLDERS) {
             composable(Routes.FOLDERS) {
                 val vm = remember { FolderViewModel(folderRepository, mediaRepository) }
-                LaunchedEffect(Unit) { vm.onIntent(UserIntent.RefreshLibrary) }
                 FolderBrowserScreen(
                     viewModel = vm,
                     onFolderClick = { folder ->

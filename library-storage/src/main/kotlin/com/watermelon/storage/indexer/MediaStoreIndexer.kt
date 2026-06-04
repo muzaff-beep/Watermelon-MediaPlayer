@@ -5,6 +5,7 @@ import com.watermelon.common.model.IndexingState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
 
 /**
  * Orchestrates the two-phase index (Manifest §5.2): Phase 1 fast sweep emits the folder tree
@@ -25,21 +26,23 @@ class MediaStoreIndexer(
     @Volatile
     private var lastScanAt: Long = 0L
 
+    private val refreshMutex = Mutex()
+
     suspend fun refresh(force: Boolean = false) {
-        val now = System.currentTimeMillis()
-        if (!force && now - lastScanAt < CACHE_WINDOW_MS) return
-
-        // Phase 1 — immediate folder tree.
-        _indexingState.value = IndexingState.SWEEPING
-        val tree = phase1Sweep.sweep()
-        _folderTree.value = tree
-
-        // Phase 2 — background metadata extraction.
-        _indexingState.value = IndexingState.EXTRACTING
-        phase2Extractor.extract(mediaUriProvider())
-
-        _indexingState.value = IndexingState.COMPLETE
-        lastScanAt = now
+        if (!refreshMutex.tryLock()) return
+        try {
+            val now = System.currentTimeMillis()
+            if (!force && now - lastScanAt < CACHE_WINDOW_MS) return
+            _indexingState.value = IndexingState.SWEEPING
+            val tree = phase1Sweep.sweep()
+            _folderTree.value = tree
+            _indexingState.value = IndexingState.EXTRACTING
+            phase2Extractor.extract(mediaUriProvider())
+            _indexingState.value = IndexingState.COMPLETE
+            lastScanAt = now
+        } finally {
+            refreshMutex.unlock()
+        }
     }
 
     companion object {

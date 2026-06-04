@@ -24,6 +24,10 @@ class FolderViewModel(
         folderRepository.observeFolderTree()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    init {
+        refresh()
+    }
+
     /** Single MVI entry point. */
     fun onIntent(intent: UserIntent) {
         when (intent) {

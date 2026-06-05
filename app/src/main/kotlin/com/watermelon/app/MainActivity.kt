@@ -191,6 +191,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(mediaUri) { vm.onIntent(UserIntent.Play(mediaUri)) }
                 PlayerScreen(
                     viewModel = vm,
+                    onBack = { navController.popBackStack() },
                     vhsTier = VhsTier.C,
                     vhsIntensity = 0.5f,
                     durationMs = exoPlayer.duration.coerceAtLeast(0L),

@@ -1,9 +1,7 @@
 package com.watermelon.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,8 +21,8 @@ import com.watermelon.common.model.FolderNode
 import com.watermelon.ui.theme.WatermelonTheme
 
 /**
- * A folder row: thumbnail/icon, display name, and item count. RTL-aware — the [Row] mirrors
- * automatically under an RTL [androidx.compose.ui.unit.LayoutDirection].
+ * A folder row: representative thumbnail, display name, and item count. RTL-aware — the [Row]
+ * mirrors automatically under an RTL LayoutDirection.
  */
 @Composable
 fun FolderListItem(
@@ -41,12 +39,12 @@ fun FolderListItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start
     ) {
-        // Thumbnail placeholder (folder swatch). A Coil thumbnail can replace this Box.
-        Box(
+        // Representative video thumbnail (falls back to a solid swatch when unavailable).
+        MediaThumbnail(
+            uri = folder.thumbnailUri,
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.primary)
         )
         Spacer(Modifier.width(16.dp))
         Text(

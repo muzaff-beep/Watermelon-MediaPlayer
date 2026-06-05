@@ -11,14 +11,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,16 +34,17 @@ import com.watermelon.common.model.FolderNode
 import com.watermelon.ui.components.FolderListItem
 import com.watermelon.ui.viewmodel.FolderViewModel
 
-/** Layout mode for the folder browser (Manifest §5.3). */
+/** Layout mode for the folder browser (Manifest 5.3). */
 enum class FolderLayout { LIST, GRID }
 
-/** Sort options (Manifest §5.3). */
+/** Sort options (Manifest 5.3). */
 enum class FolderSort { NAME, DATE, SIZE, RESOLUTION }
 
 /**
  * Folder browser. Folders are grouped into labeled sections by storage volume
  * ("Internal storage" / "SD card"), with a working grid/list toggle and sort selector.
- * Chosen layout/sort are local UI state seeded from the incoming defaults.
+ * Scroll velocity is tracked and forwarded to FolderListItem so VelocityGuardImage can
+ * switch between cheap thumbnails (fling) and quality thumbnails (settled).
  */
 @Composable
 fun FolderBrowserScreen(
@@ -56,7 +60,12 @@ fun FolderBrowserScreen(
     var currentSort by remember { mutableStateOf(sort) }
     var sortMenuOpen by remember { mutableStateOf(false) }
 
-    // Group by storage volume (internal sorts first alphabetically), sorted within each group.
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    val isScrolling by remember {
+        derivedStateOf { listState.isScrollInProgress || gridState.isScrollInProgress }
+    }
+
     val byVolume = remember(folders, currentSort) {
         folders.groupBy { it.volume }
             .toSortedMap()
@@ -65,7 +74,7 @@ fun FolderBrowserScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        // --- Toolbar: layout toggle + sort selector ---------------------------------
+        // --- Toolbar ----------------------------------------------------------------
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -93,10 +102,7 @@ fun FolderBrowserScreen(
                     FolderSort.values().forEach { option ->
                         DropdownMenuItem(
                             text = { Text(option.label()) },
-                            onClick = {
-                                currentSort = option
-                                sortMenuOpen = false
-                            }
+                            onClick = { currentSort = option; sortMenuOpen = false }
                         )
                     }
                 }
@@ -113,24 +119,26 @@ fun FolderBrowserScreen(
 
         when (currentLayout) {
             FolderLayout.LIST -> LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 byVolume.forEach { (volume, vfolders) ->
                     item(key = "hdr-$volume") { VolumeHeader(volume) }
                     items(vfolders, key = { it.path }) { folder ->
-                        FolderListItem(folder = folder, onClick = onFolderClick)
+                        FolderListItem(
+                            folder = folder,
+                            onClick = onFolderClick,
+                            isScrollingFast = isScrolling
+                        )
                     }
                 }
             }
 
             FolderLayout.GRID -> LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Adaptive(minSize = 160.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
+                modifier = Modifier.fillMaxSize().padding(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -139,7 +147,11 @@ fun FolderBrowserScreen(
                         VolumeHeader(volume)
                     }
                     gridItems(vfolders, key = { it.path }) { folder ->
-                        FolderListItem(folder = folder, onClick = onFolderClick)
+                        FolderListItem(
+                            folder = folder,
+                            onClick = onFolderClick,
+                            isScrollingFast = isScrolling
+                        )
                     }
                 }
             }
@@ -169,6 +181,6 @@ private fun FolderSort.label(): String = when (this) {
 private fun sortComparator(sort: FolderSort): Comparator<FolderNode> = when (sort) {
     FolderSort.NAME -> compareBy { it.displayName.lowercase() }
     FolderSort.SIZE -> compareByDescending { it.itemCount }
-    FolderSort.DATE -> compareBy { it.displayName.lowercase() }       // proxy until dates wired
-    FolderSort.RESOLUTION -> compareBy { it.displayName.lowercase() } // proxy at folder level
+    FolderSort.DATE -> compareBy { it.displayName.lowercase() }
+    FolderSort.RESOLUTION -> compareBy { it.displayName.lowercase() }
 }

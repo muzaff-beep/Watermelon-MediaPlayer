@@ -102,7 +102,8 @@ class Phase1Sweep(private val contentResolver: ContentResolver) {
                     displayName = bucketName,
                     itemCount = items.size,
                     children = emptyList(),
-                    volume = volumeLabel(items.first().volumeName)
+                    volume = volumeLabel(items.first().volumeName),
+                    thumbnailUri = items.first().uri
                 )
             }
             // Sort internal storage first, then by name — keeps volumes grouped together.

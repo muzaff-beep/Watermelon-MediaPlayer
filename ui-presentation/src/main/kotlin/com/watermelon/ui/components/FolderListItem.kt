@@ -21,14 +21,18 @@ import com.watermelon.common.model.FolderNode
 import com.watermelon.ui.theme.WatermelonTheme
 
 /**
- * A folder row: representative thumbnail, display name, and item count. RTL-aware — the [Row]
- * mirrors automatically under an RTL LayoutDirection.
+ * A folder row: velocity-guarded thumbnail, display name, and item count.
+ * RTL-aware — the Row mirrors automatically under RTL LayoutDirection.
+ *
+ * @param isScrollingFast passed from the parent list state; switches the thumbnail between
+ *   a cheap MediaStore thumb (fast fling) and Coil quality (settled).
  */
 @Composable
 fun FolderListItem(
     folder: FolderNode,
     onClick: (FolderNode) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isScrollingFast: Boolean = false
 ) {
     Row(
         modifier = modifier
@@ -39,9 +43,9 @@ fun FolderListItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start
     ) {
-        // Representative video thumbnail (falls back to a solid swatch when unavailable).
-        MediaThumbnail(
+        VelocityGuardImage(
             uri = folder.thumbnailUri,
+            isScrollingFast = isScrollingFast,
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(8.dp))

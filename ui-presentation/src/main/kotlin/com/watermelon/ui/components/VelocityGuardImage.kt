@@ -52,11 +52,7 @@ fun VelocityGuardImage(
 
     // MediaStore thumbnail — cheap, loaded once, available while scrolling.
     val fastThumb by produceState<Bitmap?>(initialValue = null, uri) {
-        if (uri.isNullOrEmpty()) {
-            value = null
-            return@produceState
-        }
-        value = withContext(Dispatchers.IO) {
+        val result = if (uri.isNullOrEmpty()) null else withContext(Dispatchers.IO) {
             runCatching {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     context.contentResolver.loadThumbnail(
@@ -67,6 +63,7 @@ fun VelocityGuardImage(
                 } else null
             }.getOrNull()
         }
+        value = result
     }
 
     // Solid swatch is always behind — shows while loading or on failure.

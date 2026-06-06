@@ -12,4 +12,11 @@ interface MediaRepository {
 
     /** Trigger a re-index. Phase-1 immediate; Phase-2 background. */
     suspend fun refreshIndex()
+
+    /**
+     * Record that playback started for [uri]. Sets [MediaItem.lastPlayedAt] to now,
+     * clearing the ⭐ new-file badge. Also updates the in-memory flow immediately so the
+     * UI reflects the change without waiting for the next full reloadCache.
+     */
+    suspend fun markAsPlayed(uri: String)
 }

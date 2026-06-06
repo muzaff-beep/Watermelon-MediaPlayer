@@ -8,13 +8,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * Lists the [MediaItem]s whose [MediaItem.parentFolder] matches [folderPath]. Backed by
- * [MediaRepository.observeAllMedia] so it updates live as Phase 2 enrichment lands rows.
+ * [MediaRepository.observeAllMedia] so it updates when Phase 2 completes and reloadCache runs.
+ *
+ * [refresh] triggers a fresh MediaStore scan — wired to VideoListScreen's pull-to-refresh.
  */
 class VideoListViewModel(
-    mediaRepository: MediaRepository,
+    private val mediaRepository: MediaRepository,   // private val so refresh() can call it
     private val folderPath: String
 ) : ViewModel() {
 
@@ -22,4 +25,8 @@ class VideoListViewModel(
         mediaRepository.observeAllMedia()
             .map { all -> all.filter { it.parentFolder == folderPath } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun refresh() {
+        viewModelScope.launch { mediaRepository.refreshIndex() }
+    }
 }

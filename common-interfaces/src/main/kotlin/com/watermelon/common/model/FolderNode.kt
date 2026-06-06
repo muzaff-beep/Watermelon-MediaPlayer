@@ -14,5 +14,6 @@ data class FolderNode(
     val itemCount: Int,
     val children: List<FolderNode>,
     val volume: String = "",
-    val thumbnailUri: String? = null
+    val thumbnailUri: String? = null,
+    val totalDurationMs: Long = 0L
 )

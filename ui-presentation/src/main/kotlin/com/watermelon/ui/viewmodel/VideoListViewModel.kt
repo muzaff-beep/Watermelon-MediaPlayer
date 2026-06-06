@@ -29,4 +29,9 @@ class VideoListViewModel(
     fun refresh() {
         viewModelScope.launch { mediaRepository.refreshIndex() }
     }
+
+    /** Record that the user opened this URI — clears its ⭐ new-file badge. */
+    fun markPlayed(uri: String) {
+        viewModelScope.launch { mediaRepository.markAsPlayed(uri) }
+    }
 }

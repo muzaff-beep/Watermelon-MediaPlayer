@@ -178,6 +178,7 @@ private fun VideoRow(item: MediaItem, itemSize: ItemSize, isScrollingFast: Boole
     ) {
         VelocityGuardImage(
             uri             = item.uri,
+            durationMs      = item.durationMs,
             isScrollingFast = isScrollingFast,
             modifier        = Modifier
                 .size(width = thumbW, height = thumbH)

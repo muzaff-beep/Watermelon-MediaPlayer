@@ -27,12 +27,15 @@ dependencies {
     implementation(libs.androidx.tv.material)           // TV support
     implementation(libs.coil.compose)
     implementation(libs.coil.video)
+    implementation(libs.lottie.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

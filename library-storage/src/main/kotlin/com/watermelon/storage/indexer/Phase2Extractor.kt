@@ -1,120 +1,90 @@
 package com.watermelon.storage.indexer
 
-import android.content.ContentResolver
-import android.content.ContentValues
+import android.content.ContentUris
 import android.content.Context
-import android.media.MediaMetadataRetriever
-import android.net.Uri
 import android.provider.MediaStore
 import com.watermelon.storage.db.WatermelonDatabase
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.Executors
 
 /**
- * Phase 2 — background codec/duration extraction via [MediaMetadataRetriever]. Updates SQLite
- * row-by-row on a low-priority background thread (Manifest §5.2 / Teams §4).
+ * Phase 2 — bulk MediaStore metadata extraction. Replaces per-file MediaMetadataRetriever
+ * with a single MediaStore cursor query, which is orders of magnitude faster and makes
+ * folder contents appear near-instantly after Phase 1 completes.
  *
- * Two-query upsert strategy (preserves [firstSeenAt] and [lastPlayedAt]):
- *  1. INSERT OR IGNORE — writes all fields including [firstSeenAt] = now. No-op if the row
- *     already exists, so [firstSeenAt] is set exactly once (when the URI is first indexed).
- *  2. UPDATE — refreshes metadata fields only. Never touches [firstSeenAt] or [lastPlayedAt],
- *     so the ⭐ new-file badge is not reset by re-indexing.
+ * MediaStore on API 29+ reliably provides: DURATION, WIDTH, HEIGHT, MIME_TYPE, SIZE.
+ * For exotic codecs, a future Phase 3 can enrich specific rows with MediaMetadataRetriever.
+ *
+ * Two-query upsert preserves [firstSeenAt] and [lastPlayedAt] across re-extractions.
  */
 class Phase2Extractor(
     private val context: Context,
     private val database: WatermelonDatabase,
-    private val dispatcher: CoroutineDispatcher =
-        Executors.newSingleThreadExecutor { r ->
-            Thread(r, "watermelon-phase2").apply { priority = Thread.MIN_PRIORITY }
-        }.asCoroutineDispatcher()
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
-    private val contentResolver: ContentResolver = context.contentResolver
-
     suspend fun extract(uris: List<String>) = withContext(dispatcher) {
-        val db = database.writableDatabase
+        if (uris.isEmpty()) return@withContext
+        val db  = database.writableDatabase
         val now = System.currentTimeMillis()
-        for (uriString in uris) {
-            val values = extractOne(uriString) ?: continue
 
-            // 1. INSERT OR IGNORE: sets firstSeenAt only on new rows.
-            db.execSQL(
-                """INSERT OR IGNORE INTO MediaItems
-                   (mediaId, fileSize, displayName, parentFolder,
-                    durationMs, width, height, mimeType, firstSeenAt)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
-                arrayOf(
-                    uriString,
-                    values.getAsLong("fileSize"),
-                    values.getAsString("displayName"),
-                    values.getAsString("parentFolder"),
-                    values.getAsLong("durationMs"),
-                    values.getAsInteger("width"),
-                    values.getAsInteger("height"),
-                    values.getAsString("mimeType"),
-                    now
-                )
-            )
-
-            // 2. UPDATE: refresh metadata without touching firstSeenAt or lastPlayedAt.
-            db.execSQL(
-                """UPDATE MediaItems SET
-                   fileSize=?, displayName=?, parentFolder=?,
-                   durationMs=?, width=?, height=?, mimeType=?
-                   WHERE mediaId=?""",
-                arrayOf(
-                    values.getAsLong("fileSize"),
-                    values.getAsString("displayName"),
-                    values.getAsString("parentFolder"),
-                    values.getAsLong("durationMs"),
-                    values.getAsInteger("width"),
-                    values.getAsInteger("height"),
-                    values.getAsString("mimeType"),
-                    uriString
-                )
-            )
-        }
-    }
-
-    private fun extractOne(uriString: String): ContentValues? = runCatching {
-        val uri = Uri.parse(uriString)
-        val retriever = MediaMetadataRetriever()
-        try {
-            retriever.setDataSource(context, uri)
-            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                ?.toLongOrNull() ?: 0L
-            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                ?.toIntOrNull() ?: 0
-            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                ?.toIntOrNull() ?: 0
-            val mime = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE) ?: ""
-            val (displayName, fileSize, parentFolder) = queryMediaStoreBasics(uri)
-            ContentValues().apply {
-                put("fileSize", fileSize)
-                put("displayName", displayName)
-                put("parentFolder", parentFolder)
-                put("durationMs", duration)
-                put("width", width)
-                put("height", height)
-                put("mimeType", mime)
-            }
-        } finally {
-            retriever.release()
-        }
-    }.getOrNull()
-
-    private fun queryMediaStoreBasics(uri: Uri): Triple<String, Long, String> {
         val projection = arrayOf(
+            MediaStore.Video.Media._ID,
             MediaStore.Video.Media.DISPLAY_NAME,
             MediaStore.Video.Media.SIZE,
-            MediaStore.Video.Media.BUCKET_DISPLAY_NAME
+            MediaStore.Video.Media.BUCKET_DISPLAY_NAME,
+            MediaStore.Video.Media.DURATION,
+            MediaStore.Video.Media.WIDTH,
+            MediaStore.Video.Media.HEIGHT,
+            MediaStore.Video.Media.MIME_TYPE
         )
-        contentResolver.query(uri, projection, null, null, null)?.use { c ->
-            if (c.moveToFirst()) {
-                return Triple(c.getString(0) ?: "", c.getLong(1), c.getString(2) ?: "")
+
+        context.contentResolver.query(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            projection, null, null, null
+        )?.use { cursor ->
+            val idxId          = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+            val idxName        = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+            val idxSize        = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+            val idxBucket      = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+            val idxDuration    = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
+            val idxWidth       = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
+            val idxHeight      = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
+            val idxMime        = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)
+
+            while (cursor.moveToNext()) {
+                val id          = cursor.getLong(idxId)
+                val uriString   = ContentUris.withAppendedId(
+                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id
+                ).toString()
+                val displayName = cursor.getString(idxName) ?: ""
+                val size        = cursor.getLong(idxSize)
+                val bucket      = cursor.getString(idxBucket) ?: ""
+                val duration    = cursor.getLong(idxDuration)
+                val width       = cursor.getInt(idxWidth)
+                val height      = cursor.getInt(idxHeight)
+                val mime        = cursor.getString(idxMime) ?: ""
+
+                // 1. INSERT OR IGNORE — sets firstSeenAt only for new rows.
+                db.execSQL(
+                    """INSERT OR IGNORE INTO MediaItems
+                       (mediaId,fileSize,displayName,parentFolder,
+                        durationMs,width,height,mimeType,firstSeenAt)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    arrayOf(uriString, size, displayName, bucket,
+                            duration, width, height, mime, now)
+                )
+
+                // 2. UPDATE — refreshes metadata; never touches firstSeenAt or lastPlayedAt.
+                db.execSQL(
+                    """UPDATE MediaItems SET
+                       fileSize=?,displayName=?,parentFolder=?,
+                       durationMs=?,width=?,height=?,mimeType=?
+                       WHERE mediaId=?""",
+                    arrayOf(size, displayName, bucket,
+                            duration, width, height, mime, uriString)
+                )
             }
         }
-        return Triple("", 0L, "")
     }
 }

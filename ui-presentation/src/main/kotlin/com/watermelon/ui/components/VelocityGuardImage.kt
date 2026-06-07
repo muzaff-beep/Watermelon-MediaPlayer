@@ -1,9 +1,9 @@
 package com.watermelon.ui.components
 
 import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
-import android.util.Size
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -16,74 +16,78 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import coil3.compose.AsyncImage
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
- * Velocity-aware thumbnail loader (Manifest §7).
+ * Thumbnail loader that always shows the same frame (10% into the video) regardless of
+ * scroll speed. Uses an in-memory [LruCache] so each frame is extracted only once —
+ * subsequent loads are instant, and no thumbnail ever changes during scroll.
  *
- * Fast fling ([isScrollingFast] = true):
- *   Renders a cheap MediaStore thumbnail loaded via ContentResolver.loadThumbnail (API 29+).
- *   This runs once per URI and keeps the list at 60fps during a fast fling.
+ * Replaces the previous fast/slow dual-source approach which caused jarring thumbnail
+ * switches because MediaStore and Coil extracted different frames.
  *
- * Settled ([isScrollingFast] = false):
- *   Hands off to Coil's AsyncImage, which provides disk/memory caching and automatic
- *   request cancellation. With VideoFrameDecoder registered in the app's ImageLoader
- *   (see NOTE below), Coil delivers frame-accurate video thumbnails.
- *
- * Falls back to a solid swatch on null URI, load failure, or pre-API-29 devices.
- *
- * NOTE — VideoFrameDecoder setup (one-time, in your Application class):
- *   val imageLoader = ImageLoader.Builder(this)
- *       .components { add(VideoFrameDecoder.Factory()) }
- *       .build()
- *   setSingletonImageLoader { imageLoader }
- * Requires: io.coil-kt.coil3:coil-compose and io.coil-kt.coil3:coil-video in build.gradle.kts.
- * If the project uses Coil 2, change the coil3 imports below to coil.
+ * [isScrollingFast] is kept for API compatibility but no longer changes behavior.
+ * [durationMs] is used to calculate the 10% frame time. Defaults to 3 seconds if 0.
  */
 @Composable
 fun VelocityGuardImage(
     uri: String?,
     modifier: Modifier = Modifier,
+    durationMs: Long = 0L,
     isScrollingFast: Boolean = false
 ) {
     val context = LocalContext.current
 
-    // MediaStore thumbnail — cheap, loaded once, available while scrolling.
-    val fastThumb by produceState<Bitmap?>(initialValue = null, uri) {
-        val result = if (uri.isNullOrEmpty()) null else withContext(Dispatchers.IO) {
-            runCatching {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    context.contentResolver.loadThumbnail(
-                        Uri.parse(uri),
-                        Size(128, 80),
-                        null
-                    )
-                } else null
-            }.getOrNull()
+    val thumbnail by produceState<Bitmap?>(initialValue = null, uri, durationMs) {
+        value = if (uri.isNullOrEmpty()) null else {
+            // Return cached version immediately if available.
+            ThumbnailCache.get(uri) ?: run {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    runCatching {
+                        val retriever = MediaMetadataRetriever()
+                        try {
+                            retriever.setDataSource(context, Uri.parse(uri))
+                            // 10% into the video in microseconds. Falls back to 3 s.
+                            val frameTimeMicros =
+                                if (durationMs > 0L) durationMs * 100L else 3_000_000L
+                            val raw = retriever.getFrameAtTime(
+                                frameTimeMicros,
+                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                            )
+                            raw?.let {
+                                // Scale down to thumbnail size to keep memory usage low.
+                                val scaled = Bitmap.createScaledBitmap(it, 128, 80, true)
+                                if (scaled !== it) it.recycle()
+                                ThumbnailCache.put(uri, scaled)
+                                scaled
+                            }
+                        } finally {
+                            retriever.release()
+                        }
+                    }.getOrNull()
+                }
+            }
         }
-        value = result
     }
 
-    // Solid swatch is always behind — shows while loading or on failure.
     Box(modifier.background(MaterialTheme.colorScheme.primary)) {
-        when {
-            // Settled: Coil with caching and cancellation. Upgraded by VideoFrameDecoder.
-            !isScrollingFast && !uri.isNullOrEmpty() -> AsyncImage(
-                model = uri,
+        thumbnail?.let {
+            Image(
+                bitmap             = it.asImageBitmap(),
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier.fillMaxSize()
             )
-            // Fast fling: show MediaStore thumb if ready, else swatch shows through.
-            fastThumb != null -> Image(
-                bitmap = fastThumb!!.asImageBitmap(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            // Swatch fallback — no action needed, background handles it.
         }
+        // If thumbnail is null (first load or error), the primary-color swatch shows through.
     }
+}
+
+/**
+ * Process-wide LRU cache for extracted video thumbnails. 100 entries × ~40 KB each ≈ 4 MB.
+ * Cleared automatically when the process is under memory pressure.
+ */
+private object ThumbnailCache {
+    private val cache = LruCache<String, Bitmap>(100)
+    fun get(key: String): Bitmap? = cache.get(key)
+    fun put(key: String, bitmap: Bitmap) = cache.put(key, bitmap)
 }

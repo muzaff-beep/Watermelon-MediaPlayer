@@ -28,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.watermelon.common.model.FolderNode
@@ -36,27 +35,18 @@ import com.watermelon.ui.components.FolderListItem
 import com.watermelon.ui.viewmodel.FolderViewModel
 
 /** Thumbnail density / cell size for folder and video lists. */
-enum class ItemSize(val label: String, val gridCellDp: Dp) {
-    SMALL("S", 120.dp), MEDIUM("M", 160.dp), LARGE("L", 210.dp)
-}
+enum class ItemSize(val label: String) { SMALL("S"), MEDIUM("M"), LARGE("L") }
 
-/** Layout mode. */
 enum class FolderLayout { LIST, GRID }
+enum class FolderSort   { NAME, DATE, SIZE, RESOLUTION }
 
-/** Sort key. */
-enum class FolderSort { NAME, DATE, SIZE, RESOLUTION }
-
-/**
- * Folder browser: volume-section headers, sort/size/direction toolbar, velocity-aware
- * thumbnails, list or grid layout.
- */
 @Composable
 fun FolderBrowserScreen(
     viewModel: FolderViewModel,
     onFolderClick: (FolderNode) -> Unit,
     layout: FolderLayout = FolderLayout.LIST,
-    sort: FolderSort = FolderSort.NAME,
-    modifier: Modifier = Modifier
+    sort: FolderSort     = FolderSort.NAME,
+    modifier: Modifier   = Modifier
 ) {
     val folders by viewModel.folderTree.collectAsStateWithLifecycle()
 
@@ -73,7 +63,8 @@ fun FolderBrowserScreen(
     }
 
     val byVolume = remember(folders, currentSort, ascending) {
-        val cmp = sortComparator(currentSort).let { if (ascending) it else Comparator { a, b -> it.compare(b, a) } }
+        val cmp = sortComparator(currentSort)
+            .let { if (ascending) it else Comparator { a, b -> it.compare(b, a) } }
         folders.groupBy { it.volume }
             .toSortedMap()
             .mapValues { (_, v) -> v.sortedWith(cmp) }
@@ -81,43 +72,42 @@ fun FolderBrowserScreen(
 
     val isGrid = currentLayout == FolderLayout.GRID
 
+    // Grid columns: responsive to size selection so large items always fill the row.
+    val gridColumns = when (currentItemSize) {
+        ItemSize.SMALL  -> GridCells.Fixed(3)
+        ItemSize.MEDIUM -> GridCells.Fixed(2)
+        ItemSize.LARGE  -> GridCells.Fixed(2)
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
 
         // ── Toolbar ──────────────────────────────────────────────────────────
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Layout toggle.
             TextButton(onClick = {
-                currentLayout = if (currentLayout == FolderLayout.LIST) FolderLayout.GRID else FolderLayout.LIST
-            }) {
-                Text(if (isGrid) "List" else "Grid")
-            }
+                currentLayout = if (isGrid) FolderLayout.LIST else FolderLayout.GRID
+            }) { Text(if (isGrid) "List" else "Grid") }
 
-            // Sort key.
             Box {
                 TextButton(onClick = { sortMenuOpen = true }) {
                     Text("Sort: ${currentSort.label()}")
                 }
                 DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
-                    FolderSort.values().forEach { option ->
+                    FolderSort.values().forEach { opt ->
                         DropdownMenuItem(
-                            text = { Text(option.label()) },
-                            onClick = { currentSort = option; sortMenuOpen = false }
+                            text    = { Text(opt.label()) },
+                            onClick = { currentSort = opt; sortMenuOpen = false }
                         )
                     }
                 }
             }
 
-            // Ascending / descending.
             TextButton(onClick = { ascending = !ascending }) {
                 Text(if (ascending) "↑" else "↓")
             }
 
-            // Item size.
             ItemSize.values().forEach { size ->
                 TextButton(onClick = { currentItemSize = size }) {
                     Text(
@@ -139,18 +129,18 @@ fun FolderBrowserScreen(
 
         when (currentLayout) {
             FolderLayout.LIST -> LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                state   = listState,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 byVolume.forEach { (volume, vfolders) ->
                     item(key = "hdr-$volume") { VolumeHeader(volume) }
                     items(vfolders, key = { it.path }) { folder ->
                         FolderListItem(
-                            folder         = folder,
-                            onClick        = onFolderClick,
-                            itemSize       = currentItemSize,
-                            isGrid         = false,
+                            folder          = folder,
+                            onClick         = onFolderClick,
+                            itemSize        = currentItemSize,
+                            isGrid          = false,
                             isScrollingFast = isScrolling
                         )
                     }
@@ -159,7 +149,7 @@ fun FolderBrowserScreen(
 
             FolderLayout.GRID -> LazyVerticalGrid(
                 state   = gridState,
-                columns = GridCells.Adaptive(minSize = currentItemSize.gridCellDp),
+                columns = gridColumns,
                 modifier = Modifier.fillMaxSize().padding(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement   = Arrangement.spacedBy(8.dp)
@@ -170,10 +160,10 @@ fun FolderBrowserScreen(
                     }
                     gridItems(vfolders, key = { it.path }) { folder ->
                         FolderListItem(
-                            folder         = folder,
-                            onClick        = onFolderClick,
-                            itemSize       = currentItemSize,
-                            isGrid         = true,
+                            folder          = folder,
+                            onClick         = onFolderClick,
+                            itemSize        = currentItemSize,
+                            isGrid          = true,
                             isScrollingFast = isScrolling
                         )
                     }
@@ -186,14 +176,14 @@ fun FolderBrowserScreen(
 @Composable
 private fun VolumeHeader(volume: String) {
     Text(
-        text     = volume,
+        text     = volume.ifEmpty { "Storage" },
         style    = MaterialTheme.typography.titleSmall,
         color    = MaterialTheme.colorScheme.primary,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
     )
 }
 
-private fun FolderSort.label(): String = when (this) {
+private fun FolderSort.label() = when (this) {
     FolderSort.NAME       -> "Name"
     FolderSort.DATE       -> "Date"
     FolderSort.SIZE       -> "Count"

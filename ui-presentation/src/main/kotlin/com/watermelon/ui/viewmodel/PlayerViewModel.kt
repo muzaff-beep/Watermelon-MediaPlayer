@@ -3,35 +3,50 @@ package com.watermelon.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import com.watermelon.common.controller.PlaybackController
 import com.watermelon.common.model.PlaybackState
+import com.watermelon.common.model.RepeatMode
+import com.watermelon.common.model.SleepTimerMode
 import com.watermelon.common.model.UserIntent
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * MVI ViewModel for the player. Delegates to the [PlaybackController] interface only (no
- * dependency on the concrete playback-engine, per the module boundary rules) and re-exposes
- * its state for the UI to collect.
+ * MVI ViewModel for the player. Delegates to [PlaybackController] only — no direct
+ * dependency on the concrete playback-engine (module boundary rules).
  */
 class PlayerViewModel(
     private val controller: PlaybackController
 ) : ViewModel() {
 
     val playbackState: StateFlow<PlaybackState> = controller.playbackState
-    val currentPositionMs: StateFlow<Long> = controller.currentPositionMs
-    val isSeekingFast: StateFlow<Boolean> = controller.isSeekingFast
+    val currentPositionMs: StateFlow<Long>      = controller.currentPositionMs
+    val isSeekingFast: StateFlow<Boolean>       = controller.isSeekingFast
+    val repeatMode: StateFlow<RepeatMode>       = controller.repeatMode
+    val shuffleEnabled: StateFlow<Boolean>      = controller.shuffleEnabled
 
     fun onIntent(intent: UserIntent) {
         when (intent) {
-            is UserIntent.Play -> controller.play(intent.uri)
-            is UserIntent.Seek -> controller.seekTo(intent.positionMs)
-            is UserIntent.SetSpeed -> controller.setSpeed(intent.speed)
-            UserIntent.Pause -> controller.pause()
-            UserIntent.Resume -> controller.resume()
+            is UserIntent.Play           -> controller.play(intent.uri)
+            is UserIntent.Seek           -> controller.seekTo(intent.positionMs)
+            is UserIntent.SetSpeed       -> controller.setSpeed(intent.speed)
+            UserIntent.Pause             -> controller.pause()
+            UserIntent.Resume            -> controller.resume()
             is UserIntent.SetVhsIntensity -> controller.setVhsIntensity(intent.level)
-            UserIntent.RefreshLibrary -> Unit
+            UserIntent.RefreshLibrary    -> Unit
         }
     }
 
-    fun setSleepTimer(minutes: Int) = controller.setSleepTimer(minutes)
-    fun cancelSleepTimer() = controller.cancelSleepTimer()
-    fun takeScreenshot(): String? = controller.takeScreenshot()
+    /** Cycles NONE → ONE → ALL → NONE. */
+    fun cycleRepeat() {
+        val next = when (controller.repeatMode.value) {
+            RepeatMode.NONE -> RepeatMode.ONE
+            RepeatMode.ONE  -> RepeatMode.ALL
+            RepeatMode.ALL  -> RepeatMode.NONE
+        }
+        controller.setRepeat(next)
+    }
+
+    fun toggleShuffle() = controller.setShuffle(!controller.shuffleEnabled.value)
+
+    fun setSleepTimer(mode: SleepTimerMode) = controller.setSleepTimer(mode)
+    fun cancelSleepTimer()                   = controller.cancelSleepTimer()
+    fun takeScreenshot(): String?            = controller.takeScreenshot()
 }

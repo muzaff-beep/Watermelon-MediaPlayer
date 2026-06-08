@@ -2,15 +2,14 @@ package com.watermelon.app
 
 import android.Manifest
 import android.app.PictureInPictureParams
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.app.PendingIntent
+import android.app.RemoteAction
+import android.graphics.drawable.Icon
+import android.util.Rational
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -190,6 +189,42 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { mediaRepository.refreshIndex() }
     }
 
+    private fun enterPiPMode() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val actions = mutableListOf<android.app.RemoteAction>()
+
+        fun makeAction(action: String, iconRes: Int, title: String): android.app.RemoteAction {
+            val intent = PendingIntent.getBroadcast(
+                this@MainActivity, action.hashCode(),
+                Intent(action).setPackage(packageName),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            return android.app.RemoteAction(
+                Icon.createWithResource(this@MainActivity, iconRes),
+                title, title, intent
+            )
+        }
+
+        val state = playbackController.playbackState.value
+        val isPlaying = state == PlaybackState.PLAYING
+        val ppIcon = if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        actions += makeAction(PiPReceiver.ACTION_PLAY_PAUSE, ppIcon, if (isPlaying) "Pause" else "Play")
+        actions += makeAction(PiPReceiver.ACTION_PREV, android.R.drawable.ic_media_previous, "Previous")
+        actions += makeAction(PiPReceiver.ACTION_NEXT, android.R.drawable.ic_media_next, "Next")
+
+        val params = android.app.PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setActions(actions)
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    setAutoEnterEnabled(false)
+                    setSeamlessResizeEnabled(true)
+                }
+            }
+            .build()
+        enterPictureInPictureMode(params)
+    }
+
     @Composable
     private fun WatermelonNavHost(navController: NavHostController) {
         var settingsState by remember { mutableStateOf(SettingsState()) }
@@ -229,6 +264,14 @@ class MainActivity : ComponentActivity() {
                     currentSubtitle = null,
                     uri          = mediaUri,
                     screenshotMode = settingsState.screenshotMode,
+                    onPipClick   = { isPiPActive = true; enterPiPMode() },
+                    onBackgroundClick = { enabled ->
+                        if (enabled) {
+                            startService(Intent(this@MainActivity, com.watermelon.playback.service.WatermelonPlaybackService::class.java))
+                        } else {
+                            stopService(Intent(this@MainActivity, com.watermelon.playback.service.WatermelonPlaybackService::class.java))
+                        }
+                    },
                     surface      = { modifier ->
                         AndroidView(
                             modifier = modifier,

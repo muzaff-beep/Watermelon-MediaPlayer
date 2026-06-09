@@ -145,6 +145,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installCrashLogger()
         super.onCreate(savedInstanceState)
 
         // Restore persisted volume
@@ -199,6 +200,27 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         if (isPiPActive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             enterPiPMode()
+        }
+    }
+
+    /**
+     * Writes any uncaught exception to a timestamped file in Documents immediately,
+     * so crashes can be diagnosed without a PC/adb. Chains to the default handler after.
+     */
+    private fun installCrashLogger() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            runCatching {
+                val dir = android.os.Environment.getExternalStoragePublicDirectory(
+                    android.os.Environment.DIRECTORY_DOCUMENTS
+                )
+                val file = java.io.File(dir, "watermelon_crash_${System.currentTimeMillis()}.txt")
+                file.writeText(
+                    "Thread: ${thread.name}\n\n" +
+                    android.util.Log.getStackTraceString(throwable)
+                )
+            }
+            previous?.uncaughtException(thread, throwable)
         }
     }
 

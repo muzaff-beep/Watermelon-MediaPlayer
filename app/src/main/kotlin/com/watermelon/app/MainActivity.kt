@@ -176,11 +176,9 @@ class MainActivity : ComponentActivity() {
             addAction(PiPReceiver.ACTION_PREV)
             addAction(PiPReceiver.ACTION_NEXT)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(pipActionReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(pipActionReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            this, pipActionReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
     override fun onStop() {

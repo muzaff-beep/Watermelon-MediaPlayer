@@ -1,11 +1,8 @@
 package com.watermelon.ui.viewmodel
 
 import android.content.ContentResolver
-import android.content.ContentUris
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.watermelon.common.model.MediaItem

@@ -37,8 +37,10 @@ fun VelocityGuardImage(
 ) {
     val context = LocalContext.current
 
+    @Suppress("ProduceStateDoesNotAssignValue")
     val thumbnail by produceState<Bitmap?>(initialValue = null, uri, durationMs) {
-        value = loadThumbnail(context, uri, durationMs)
+        val loaded = loadThumbnail(context, uri, durationMs)
+        value = loaded
     }
 
     Box(modifier.background(Color.Black)) {

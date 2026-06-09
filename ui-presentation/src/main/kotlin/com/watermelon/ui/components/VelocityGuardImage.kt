@@ -6,6 +6,7 @@ import android.net.Uri
 import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -71,12 +72,12 @@ fun VelocityGuardImage(
         }
     }
 
-    Box(modifier.background(MaterialTheme.colorScheme.primary)) {
+    Box(modifier.background(Color.Black)) {
         thumbnail?.let {
             Image(
                 bitmap             = it.asImageBitmap(),
                 contentDescription = null,
-                contentScale       = ContentScale.Crop,
+                contentScale       = ContentScale.Fit,
                 modifier           = Modifier.fillMaxSize()
             )
         }

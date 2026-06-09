@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -19,9 +20,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.painterResource
+import com.watermelon.ui.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -62,6 +67,7 @@ private val SizeSaver = Saver<ItemSize, String>(
 fun FolderBrowserScreen(
     viewModel: FolderViewModel,
     onFolderClick: (FolderNode) -> Unit,
+    onSettingsClick: () -> Unit = {},
     layout: FolderLayout = FolderLayout.LIST,
     sort: FolderSort     = FolderSort.NAME,
     modifier: Modifier   = Modifier
@@ -109,7 +115,13 @@ fun FolderBrowserScreen(
         ) {
             TextButton(onClick = {
                 currentLayout = if (isGrid) FolderLayout.LIST else FolderLayout.GRID
-            }) { Text(if (isGrid) "List" else "Grid") }
+            }) {
+                Icon(
+                    painterResource(if (isGrid) R.drawable.ic_view_list else R.drawable.ic_view_grid),
+                    contentDescription = if (isGrid) "List view" else "Grid view",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
             Box {
                 TextButton(onClick = { sortMenuOpen = true }) {
@@ -125,8 +137,12 @@ fun FolderBrowserScreen(
                 }
             }
 
-            TextButton(onClick = { ascending = !ascending }) {
-                Text(if (ascending) "↑" else "↓")
+            IconButton(onClick = { ascending = !ascending }) {
+                Icon(
+                    painterResource(if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending),
+                    contentDescription = if (ascending) "Ascending" else "Descending",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
 
             ItemSize.values().forEach { size ->
@@ -137,6 +153,14 @@ fun FolderBrowserScreen(
                                 else MaterialTheme.colorScheme.onSurface
                     )
                 }
+            }
+
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    painterResource(R.drawable.ic_settings),
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
 

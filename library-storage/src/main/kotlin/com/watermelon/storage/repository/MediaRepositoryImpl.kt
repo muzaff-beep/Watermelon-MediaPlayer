@@ -32,7 +32,9 @@ class MediaRepositoryImpl(
     }
 
     override suspend fun refreshIndex() {
+        com.watermelon.common.util.FileLogger.i("Media", "refreshIndex — starting indexer")
         indexer.refresh(force = true)
+        com.watermelon.common.util.FileLogger.i("Media", "refreshIndex — indexer done, reloading cache")
         reloadCache()
     }
 
@@ -51,6 +53,7 @@ class MediaRepositoryImpl(
         database.readableDatabase.query(
             "MediaItems", null, null, null, null, null, "displayName ASC"
         ).use { c -> while (c.moveToNext()) items += c.toMediaItem() }
+        com.watermelon.common.util.FileLogger.i("Media", "reloadCache — loaded ${items.size} items from DB")
         mediaFlow.value = items
     }
 

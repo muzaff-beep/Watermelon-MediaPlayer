@@ -61,30 +61,38 @@ class PlaylistRepositoryImpl(
 
     override fun observeVideos(playlistId: String): Flow<List<MediaItem>> =
         mediaRepository.observeAllMedia().map { all ->
-            when (playlistId) {
+            com.watermelon.common.util.FileLogger.i("Playlist",
+                "observeVideos($playlistId) — total media in library: ${all.size}")
+            val result = when (playlistId) {
                 SystemPlaylist.ID_RECENTLY_ADDED -> {
-                    // Fixed sort: newest first. Uses dateAdded, falling back to firstSeenAt
-                    // for rows indexed before dateAdded existed.
                     val cutoff = System.currentTimeMillis() - sevenDaysMs
-                    all.filter {
+                    val filtered = all.filter {
                         val ts = if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt
                         ts >= cutoff
                     }.sortedByDescending {
                         if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt
                     }
+                    com.watermelon.common.util.FileLogger.i("Playlist",
+                        "RecentlyAdded — ${filtered.size} videos within 7 days (cutoff=$cutoff)")
+                    filtered
                 }
                 SystemPlaylist.ID_FAVOURITES -> {
                     val favUris = getFavouriteUris()
                     val inFav = all.filter { it.uri in favUris }
+                    com.watermelon.common.util.FileLogger.i("Playlist",
+                        "Favourites — favUris=${favUris.size}, matched videos=${inFav.size}")
                     applyCustomOrder(playlistId, inFav)
                 }
                 else -> {
                     val uris = getPlaylistItemUris(playlistId)
                     val uriSet = uris.toSet()
                     val inPlaylist = all.filter { it.uri in uriSet }
+                    com.watermelon.common.util.FileLogger.i("Playlist",
+                        "UserPlaylist($playlistId) — items=${uris.size}, matched=${inPlaylist.size}")
                     applyCustomOrder(playlistId, inPlaylist)
                 }
             }
+            result
         }.flowOn(Dispatchers.IO)
 
     /**
@@ -114,6 +122,7 @@ class PlaylistRepositoryImpl(
     }
 
     override suspend fun addToFavourites(uri: String) = withContext(Dispatchers.IO) {
+        com.watermelon.common.util.FileLogger.i("Playlist", "addToFavourites($uri)")
         db.writableDatabase.insertWithOnConflict(
             "Favourites",
             null,

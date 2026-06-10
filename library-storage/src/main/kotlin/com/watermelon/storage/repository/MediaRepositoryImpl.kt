@@ -56,10 +56,12 @@ class MediaRepositoryImpl(
 
     private fun android.database.Cursor.toMediaItem(): MediaItem {
         val lastPlayedIdx = getColumnIndex("lastPlayedAt")
+        val dateAddedIdx  = getColumnIndex("dateAdded")
+        val name          = getString(getColumnIndexOrThrow("displayName"))
         return MediaItem(
             uri          = getString(getColumnIndexOrThrow("mediaId")),
             fileSize     = getLong(getColumnIndexOrThrow("fileSize")),
-            displayName  = getString(getColumnIndexOrThrow("displayName")),
+            displayName  = name,
             parentFolder = getString(getColumnIndexOrThrow("parentFolder")),
             durationMs   = getLong(getColumnIndexOrThrow("durationMs")),
             width        = getInt(getColumnIndexOrThrow("width")),
@@ -67,7 +69,9 @@ class MediaRepositoryImpl(
             mimeType     = getString(getColumnIndexOrThrow("mimeType")) ?: "",
             firstSeenAt  = getLong(getColumnIndexOrThrow("firstSeenAt")),
             lastPlayedAt = if (lastPlayedIdx >= 0 && !isNull(lastPlayedIdx))
-                               getLong(lastPlayedIdx) else null
+                               getLong(lastPlayedIdx) else null,
+            dateAdded    = if (dateAddedIdx >= 0) getLong(dateAddedIdx) else 0L,
+            fileExtension = name.substringAfterLast('.', "").lowercase()
         )
     }
 }

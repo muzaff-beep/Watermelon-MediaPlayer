@@ -92,6 +92,10 @@ class FolderViewModel(
                 add(BrowserRow.Header("Main Storage"))
                 storageFolders.forEach { add(BrowserRow.Folder(it)) }
             }
+        }.also {
+            com.watermelon.common.util.FileLogger.i("Folder",
+                "rows built: ${it.size} rows | media=${allMedia.size} playlists=${playlists.size} " +
+                "storage=${storageFolders.size} hidden=${hidden.size}")
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -127,8 +131,11 @@ class FolderViewModel(
     fun isFolderVisible(path: String): Boolean = settingsStore.isFolderVisible(path)
 
     fun setFolderHidden(path: String, hidden: Boolean) {
+        com.watermelon.common.util.FileLogger.i("Visibility", "setFolderHidden($path, hidden=$hidden)")
         settingsStore.setFolderHidden(path, hidden)
         visibilityVersion.value += 1
+        com.watermelon.common.util.FileLogger.i("Visibility",
+            "hidden set now: ${settingsStore.getHiddenFolders()}")
     }
 
     private fun refresh() {

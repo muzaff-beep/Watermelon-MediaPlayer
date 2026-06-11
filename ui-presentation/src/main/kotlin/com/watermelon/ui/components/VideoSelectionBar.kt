@@ -6,14 +6,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.watermelon.ui.R
 
@@ -48,34 +45,30 @@ fun VideoSelectionBar(
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = onAddToFavourites) {
-                    Icon(
-                        painterResource(R.drawable.ic_favorite),
-                        contentDescription = "Add to Favourites",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onAddToPlaylist) {
-                    Icon(
-                        painterResource(R.drawable.ic_playlist_add),
-                        contentDescription = "Add to Playlist",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onShare) {
-                    Icon(
-                        painterResource(R.drawable.ic_share),
-                        contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        painterResource(R.drawable.ic_delete),
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+                LabeledIconButton(
+                    iconRes = R.drawable.ic_favorite,
+                    label   = "Favourite",
+                    tint    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = onAddToFavourites
+                )
+                LabeledIconButton(
+                    iconRes = R.drawable.ic_playlist_add,
+                    label   = "Playlist",
+                    tint    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = onAddToPlaylist
+                )
+                LabeledIconButton(
+                    iconRes = R.drawable.ic_share,
+                    label   = "Share",
+                    tint    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onClick = onShare
+                )
+                LabeledIconButton(
+                    iconRes = R.drawable.ic_delete,
+                    label   = "Delete",
+                    tint    = MaterialTheme.colorScheme.error,
+                    onClick = onDelete
+                )
             }
         }
     }

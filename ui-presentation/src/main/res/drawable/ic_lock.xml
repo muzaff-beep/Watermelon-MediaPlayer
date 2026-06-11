@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
     <path
         android:fillColor="#FF000000"
-        android:pathData="M18 8H17V6C17 3.24 14.76 1 12 1C9.24 1 7 3.24 7 6V8H6C4.9 8 4 8.9 4 10V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V10C20 8.9 19.1 8 18 8ZM12 17C10.9 17 10 16.1 10 15C10 13.9 10.9 13 12 13C13.1 13 14 13.9 14 15C14 16.1 13.1 17 12 17ZM15.1 8H8.9V6C8.9 4.29 10.29 2.9 12 2.9C13.71 2.9 15.1 4.29 15.1 6V8Z" />
+        android:fillType="evenOdd"
+        android:pathData="M16 4C19.64 4 22.59 6.91 22.67 10.53 22.67 10.61 22.73 10.67 22.8 10.67H24.67C25.03 10.67 25.33 10.97 25.33 11.33V26C25.33 26.37 25.03 26.67 24.67 26.67H7.33C6.97 26.67 6.67 26.37 6.67 26V11.33C6.67 10.97 6.97 10.67 7.33 10.67H9.2C9.27 10.67 9.33 10.61 9.33 10.53 9.41 6.91 12.36 4 16 4ZM12 10.53C12 10.61 12.06 10.67 12.13 10.67H19.87C19.94 10.67 20 10.61 20 10.53 19.93 8.39 18.16 6.67 16 6.67 13.84 6.67 12.07 8.39 12 10.53ZM9.33 14C9.33 13.63 9.63 13.33 10 13.33H22C22.37 13.33 22.67 13.63 22.67 14V23.33C22.67 23.7 22.37 24 22 24H10C9.63 24 9.33 23.7 9.33 23.33V14Z"/>
 </vector>

@@ -28,6 +28,7 @@ dependencies {
     implementation(project(":library-storage"))
     implementation(project(":subtitle-engine"))
     implementation(project(":common-interfaces"))
+    implementation(libs.androidx.media3.session)
 
     implementation(libs.androidx.core)
     implementation(libs.androidx.activity.compose)

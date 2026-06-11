@@ -58,6 +58,8 @@ class PlaybackControllerImpl(
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
+            com.watermelon.common.util.FileLogger.i("Playback",
+                "onPlaybackStateChanged: ${stateName(state)} playWhenReady=${player.playWhenReady}")
             val mapped = when (state) {
                 Player.STATE_IDLE      -> PlaybackState.IDLE
                 Player.STATE_BUFFERING -> PlaybackState.BUFFERING
@@ -96,16 +98,46 @@ class PlaybackControllerImpl(
 
     init { player.addListener(listener) }
 
+    private fun stateName(s: Int) = when (s) {
+        Player.STATE_IDLE      -> "IDLE"
+        Player.STATE_BUFFERING -> "BUFFERING"
+        Player.STATE_READY     -> "READY"
+        Player.STATE_ENDED     -> "ENDED"
+        else                   -> "UNKNOWN($s)"
+    }
+
     override fun play(uri: String, startPositionMs: Long) {
+        com.watermelon.common.util.FileLogger.i("Playback", "play() called uri=$uri start=$startPositionMs")
         _playbackState.value = PlaybackState.LOADING
-        player.setMediaItem(Media3Item.fromUri(uri), startPositionMs)
+
+        // Attach metadata so the notification shows a title (filename) — artwork is added
+        // by the session from the media if available.
+        val title = uri.substringAfterLast('/').substringBeforeLast('.')
+            .ifEmpty { "Video" }
+        val metadata = androidx.media3.common.MediaMetadata.Builder()
+            .setTitle(title)
+            .build()
+        val item = Media3Item.Builder()
+            .setUri(uri)
+            .setMediaMetadata(metadata)
+            .build()
+
+        player.setMediaItem(item, startPositionMs)
         player.prepare()
         player.playWhenReady = true
+        com.watermelon.common.util.FileLogger.i("Playback",
+            "play() — setMediaItem+prepare+playWhenReady done; playerState=${player.playbackState}")
         startPositionTicker()
     }
 
-    override fun pause()  { player.playWhenReady = false }
-    override fun resume() { player.playWhenReady = true }
+    override fun pause()  {
+        com.watermelon.common.util.FileLogger.i("Playback", "pause()")
+        player.playWhenReady = false
+    }
+    override fun resume() {
+        com.watermelon.common.util.FileLogger.i("Playback", "resume()")
+        player.playWhenReady = true
+    }
 
     override fun seekTo(positionMs: Long) {
         player.seekTo(positionMs)

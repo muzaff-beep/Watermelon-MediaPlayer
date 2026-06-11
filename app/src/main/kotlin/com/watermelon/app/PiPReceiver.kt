@@ -43,5 +43,7 @@ class PiPReceiver : BroadcastReceiver() {
         const val ACTION_PREV       = "com.watermelon.pip.PREV"
         const val ACTION_NEXT       = "com.watermelon.pip.NEXT"
         const val ACTION_MUTE       = "com.watermelon.pip.MUTE"
+        const val ACTION_REWIND     = "com.watermelon.pip.REWIND"
+        const val ACTION_FORWARD    = "com.watermelon.pip.FORWARD"
     }
 }

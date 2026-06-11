@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.res.painterResource
 import com.watermelon.ui.R
+import com.watermelon.ui.components.LabeledIconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -113,20 +114,18 @@ fun FolderBrowserScreen(
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = {
-                currentLayout = if (isGrid) FolderLayout.LIST else FolderLayout.GRID
-            }) {
-                Icon(
-                    painterResource(if (isGrid) R.drawable.ic_view_list else R.drawable.ic_view_grid),
-                    contentDescription = if (isGrid) "List view" else "Grid view",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            LabeledIconButton(
+                iconRes = if (isGrid) R.drawable.ic_view_list else R.drawable.ic_view_grid,
+                label   = if (isGrid) "List" else "Grid",
+                onClick = { currentLayout = if (isGrid) FolderLayout.LIST else FolderLayout.GRID }
+            )
 
             Box {
-                TextButton(onClick = { sortMenuOpen = true }) {
-                    Text("Sort: ${currentSort.label()}")
-                }
+                LabeledIconButton(
+                    iconRes = R.drawable.ic_sort_name,
+                    label   = "Sort: ${currentSort.label()}",
+                    onClick = { sortMenuOpen = true }
+                )
                 DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
                     FolderSort.values().forEach { opt ->
                         DropdownMenuItem(
@@ -137,31 +136,30 @@ fun FolderBrowserScreen(
                 }
             }
 
-            IconButton(onClick = { ascending = !ascending }) {
-                Icon(
-                    painterResource(if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending),
-                    contentDescription = if (ascending) "Ascending" else "Descending",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            LabeledIconButton(
+                iconRes = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
+                label   = if (ascending) "Ascending" else "Descending",
+                onClick = { ascending = !ascending }
+            )
 
             ItemSize.values().forEach { size ->
-                TextButton(onClick = { currentItemSize = size }) {
-                    Text(
-                        text  = size.label,
-                        color = if (size == currentItemSize) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    painterResource(R.drawable.ic_settings),
-                    contentDescription = "Settings",
-                    tint = MaterialTheme.colorScheme.onSurface
+                LabeledIconButton(
+                    iconRes = when (size) {
+                        ItemSize.SMALL  -> R.drawable.ic_size_small
+                        ItemSize.MEDIUM -> R.drawable.ic_size_medium
+                        ItemSize.LARGE  -> R.drawable.ic_size_large
+                    },
+                    label   = size.label,
+                    active  = size == currentItemSize,
+                    onClick = { currentItemSize = size }
                 )
             }
+
+            LabeledIconButton(
+                iconRes = R.drawable.ic_settings,
+                label   = "Settings",
+                onClick = onSettingsClick
+            )
         }
 
         // ── Content ───────────────────────────────────────────────────────────

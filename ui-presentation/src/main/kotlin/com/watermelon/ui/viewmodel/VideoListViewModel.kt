@@ -23,7 +23,8 @@ import kotlinx.coroutines.withContext
 class VideoListViewModel(
     private val mediaRepository: MediaRepository,
     private val folderPath: String,
-    private val playlistRepository: PlaylistRepository? = null
+    private val playlistRepository: PlaylistRepository? = null,
+    private val isPlaylist: Boolean = false
 ) : ViewModel() {
 
     private val _isShuffled   = MutableStateFlow(false)
@@ -31,13 +32,6 @@ class VideoListViewModel(
 
     val isShuffled: StateFlow<Boolean>       = _isShuffled.asStateFlow()
     val selection: StateFlow<SelectionState> = _selection.asStateFlow()
-
-    /**
-     * True when folderPath is a playlist id rather than a folder. Folder paths are
-     * filesystem paths (always contain '/'); playlist ids are system constants or UUIDs
-     * (never contain '/').
-     */
-    private val isPlaylist: Boolean = !folderPath.contains('/')
 
     private val sourceVideos: kotlinx.coroutines.flow.Flow<List<MediaItem>> =
         if (isPlaylist && playlistRepository != null) {

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,7 +45,7 @@ class VideoListViewModel(
             playlistRepository.observeVideos(folderPath)
         } else {
             com.watermelon.common.util.FileLogger.i("VideoList", "source = folder '$folderPath'")
-            kotlinx.coroutines.flow.map(mediaRepository.observeAllMedia()) { all ->
+            mediaRepository.observeAllMedia().map { all ->
                 all.filter { it.parentFolder == folderPath }
             }
         }

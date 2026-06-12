@@ -98,6 +98,26 @@ class PlaybackControllerImpl(
 
     init { player.addListener(listener) }
 
+    /**
+     * Resolves a human-readable filename for the notification title. For content:// URIs
+     * we query MediaStore DISPLAY_NAME; falls back to "Video" if unavailable.
+     */
+    private fun resolveDisplayName(uri: String): String {
+        return runCatching {
+            val parsed = android.net.Uri.parse(uri)
+            context.contentResolver.query(
+                parsed,
+                arrayOf(android.provider.MediaStore.Video.Media.DISPLAY_NAME),
+                null, null, null
+            )?.use { c ->
+                if (c.moveToFirst()) {
+                    val name = c.getString(0)
+                    name?.substringBeforeLast('.')?.ifEmpty { name }
+                } else null
+            }
+        }.getOrNull() ?: "Video"
+    }
+
     private fun stateName(s: Int) = when (s) {
         Player.STATE_IDLE      -> "IDLE"
         Player.STATE_BUFFERING -> "BUFFERING"
@@ -118,8 +138,7 @@ class PlaybackControllerImpl(
         com.watermelon.common.util.FileLogger.i("Playback", "play() called uri=$uri start=$startPositionMs")
         _playbackState.value = PlaybackState.LOADING
 
-        val title = uri.substringAfterLast('/').substringBeforeLast('.')
-            .ifEmpty { "Video" }
+        val title = resolveDisplayName(uri)
         val metadata = androidx.media3.common.MediaMetadata.Builder()
             .setTitle(title)
             .build()
@@ -151,7 +170,12 @@ class PlaybackControllerImpl(
     }
 
     override fun setSpeed(speed: Float) {
-        player.playbackParameters = PlaybackParameters(speed.coerceIn(MIN_SPEED, MAX_SPEED))
+        val s = speed.coerceIn(MIN_SPEED, MAX_SPEED)
+        // For FF, let pitch rise with speed → the accelerating-cassette whine. At 1× keep
+        // pitch normal. Above 1×, scale pitch up but gently (sqrt) so it whines, not chipmunks.
+        val pitch = if (s > 1f) kotlin.math.sqrt(s) else 1f
+        player.playbackParameters = PlaybackParameters(s, pitch)
+        com.watermelon.common.util.FileLogger.i("Playback", "setSpeed=$s pitch=$pitch")
     }
 
     override fun setRepeat(mode: RepeatMode) {
@@ -214,7 +238,7 @@ class PlaybackControllerImpl(
 
     companion object {
         const val MIN_SPEED        = 0.5f
-        const val MAX_SPEED        = 2.0f
+        const val MAX_SPEED        = 8.0f
         private const val POSITION_TICK_MS = 250L
     }
 }

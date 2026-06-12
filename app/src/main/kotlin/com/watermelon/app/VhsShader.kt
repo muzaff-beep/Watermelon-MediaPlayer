@@ -85,12 +85,19 @@ object VhsShader {
      * are not yet known.
      */
     fun build(tier: VhsTier, intensity: Float, time: Float, width: Float, height: Float): RenderEffect? {
-        if (width <= 0f || height <= 0f) return null
-        shader.setFloatUniform("resolution", width, height)
-        shader.setFloatUniform("intensity", intensity.coerceIn(0f, 1f))
-        shader.setFloatUniform("time", time)
-        shader.setFloatUniform("enableJitter", if (tier.hasJitter) 1f else 0f)
-        shader.setFloatUniform("enableTracking", if (tier.hasTracking) 1f else 0f)
-        return RenderEffect.createRuntimeShaderEffect(shader, "inputShader")
+        if (width <= 0f || height <= 0f) {
+            com.watermelon.common.util.FileLogger.w("VHS", "shader build skipped — no surface size (w=$width h=$height)")
+            return null
+        }
+        return runCatching {
+            shader.setFloatUniform("resolution", width, height)
+            shader.setFloatUniform("intensity", intensity.coerceIn(0f, 1f))
+            shader.setFloatUniform("time", time)
+            shader.setFloatUniform("enableJitter", if (tier.hasJitter) 1f else 0f)
+            shader.setFloatUniform("enableTracking", if (tier.hasTracking) 1f else 0f)
+            RenderEffect.createRuntimeShaderEffect(shader, "inputShader")
+        }.onFailure {
+            com.watermelon.common.util.FileLogger.e("VHS", "shader build failed", it)
+        }.getOrNull()
     }
 }

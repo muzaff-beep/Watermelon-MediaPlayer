@@ -105,13 +105,31 @@ class VideoListViewModel(
      * [onDeleteConfirmed].
      */
     fun buildDeleteRequest(contentResolver: ContentResolver): android.content.IntentSender? {
-        val uris = _selection.value.selectedUris.map { Uri.parse(it) }
-        if (uris.isEmpty()) return null
+        val rawUris = _selection.value.selectedUris
+        if (rawUris.isEmpty()) return null
+
+        // Rebuild each URI from its numeric ID against the canonical Video collection.
+        // Passing stored URI strings directly to createDeleteRequest can throw
+        // "Invalid Uri" if the string form isn't the exact volume-qualified content URI
+        // MediaStore expects. ContentUris.withAppendedId guarantees a valid one.
+        val uris = rawUris.mapNotNull { raw ->
+            runCatching {
+                val parsed = Uri.parse(raw)
+                val id = android.content.ContentUris.parseId(parsed)
+                android.content.ContentUris.withAppendedId(
+                    android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id
+                )
+            }.getOrNull()
+        }
+        if (uris.isEmpty()) {
+            com.watermelon.common.util.FileLogger.e("Delete", "no valid URIs to delete from ${rawUris.size} selected")
+            return null
+        }
+
         return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             com.watermelon.common.util.FileLogger.i("Delete", "createDeleteRequest for ${uris.size} uris")
             android.provider.MediaStore.createDeleteRequest(contentResolver, uris).intentSender
         } else {
-            // Pre-30: attempt direct delete.
             com.watermelon.common.util.FileLogger.i("Delete", "direct delete for ${uris.size} uris (pre-30)")
             viewModelScope.launch(Dispatchers.IO) {
                 uris.forEach { runCatching { contentResolver.delete(it, null, null) } }

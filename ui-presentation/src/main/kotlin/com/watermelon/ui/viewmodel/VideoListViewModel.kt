@@ -31,12 +31,31 @@ class VideoListViewModel(
     val isShuffled: StateFlow<Boolean>       = _isShuffled.asStateFlow()
     val selection: StateFlow<SelectionState> = _selection.asStateFlow()
 
+    /**
+     * True when folderPath is a playlist id rather than a folder. Folder paths are
+     * filesystem paths (always contain '/'); playlist ids are system constants or UUIDs
+     * (never contain '/').
+     */
+    private val isPlaylist: Boolean = !folderPath.contains('/')
+
+    private val sourceVideos: kotlinx.coroutines.flow.Flow<List<MediaItem>> =
+        if (isPlaylist && playlistRepository != null) {
+            com.watermelon.common.util.FileLogger.i("VideoList", "source = playlist '$folderPath'")
+            playlistRepository.observeVideos(folderPath)
+        } else {
+            com.watermelon.common.util.FileLogger.i("VideoList", "source = folder '$folderPath'")
+            kotlinx.coroutines.flow.map(mediaRepository.observeAllMedia()) { all ->
+                all.filter { it.parentFolder == folderPath }
+            }
+        }
+
     val videos: StateFlow<List<MediaItem>> = combine(
-        mediaRepository.observeAllMedia(),
+        sourceVideos,
         _isShuffled
-    ) { all, shuffled ->
-        val filtered = all.filter { it.parentFolder == folderPath }
-        if (shuffled) filtered.shuffled() else filtered
+    ) { list, shuffled ->
+        com.watermelon.common.util.FileLogger.i("VideoList",
+            "videos emitted: ${list.size} (shuffled=$shuffled)")
+        if (shuffled) list.shuffled() else list
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun refresh() {
@@ -80,18 +99,39 @@ class VideoListViewModel(
         }
     }
 
-    fun deleteSelected(contentResolver: ContentResolver) {
-        val uris = _selection.value.selectedUris.toList()
-        viewModelScope.launch(Dispatchers.IO) {
-            uris.forEach { uriStr ->
-                runCatching {
-                    val uri = Uri.parse(uriStr)
-                    contentResolver.delete(uri, null, null)
-                }
+    /**
+     * Deletes the selected videos. On API 30+ scoped storage you cannot delete media you
+     * don't own with a plain ContentResolver.delete — it throws RecoverableSecurityException
+     * or silently no-ops. Instead we build a MediaStore delete request (IntentSender) that
+     * the Activity launches to get the one-tap system consent dialog.
+     *
+     * Returns an IntentSender to launch (API 30+), or null if it deleted directly (older
+     * APIs / owned media). After a successful launched delete, the Activity should call
+     * [onDeleteConfirmed].
+     */
+    fun buildDeleteRequest(contentResolver: ContentResolver): android.content.IntentSender? {
+        val uris = _selection.value.selectedUris.map { Uri.parse(it) }
+        if (uris.isEmpty()) return null
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            com.watermelon.common.util.FileLogger.i("Delete", "createDeleteRequest for ${uris.size} uris")
+            android.provider.MediaStore.createDeleteRequest(contentResolver, uris).intentSender
+        } else {
+            // Pre-30: attempt direct delete.
+            com.watermelon.common.util.FileLogger.i("Delete", "direct delete for ${uris.size} uris (pre-30)")
+            viewModelScope.launch(Dispatchers.IO) {
+                uris.forEach { runCatching { contentResolver.delete(it, null, null) } }
+                clearSelection()
+                mediaRepository.refreshIndex()
             }
-            clearSelection()
-            mediaRepository.refreshIndex()
+            null
         }
+    }
+
+    /** Called by the Activity after a launched delete request succeeds. */
+    fun onDeleteConfirmed() {
+        com.watermelon.common.util.FileLogger.i("Delete", "delete confirmed — clearing selection + refreshing")
+        clearSelection()
+        viewModelScope.launch { mediaRepository.refreshIndex() }
     }
 
     fun addSelectedToFavourites() {

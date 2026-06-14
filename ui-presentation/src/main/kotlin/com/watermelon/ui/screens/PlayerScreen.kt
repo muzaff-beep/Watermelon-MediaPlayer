@@ -131,7 +131,7 @@ fun PlayerScreen(
     vhsTier: VhsTier,
     vhsIntensity: Float,
     durationMs: Long,
-    currentSubtitle: String?,
+    subtitleTrack: com.watermelon.common.model.ParsedSubtitle? = null,
     surface: @Composable (Modifier) -> Unit,
     onBack: () -> Unit,
     uri: String = "",
@@ -301,9 +301,13 @@ fun PlayerScreen(
         }
 
         // ── Subtitles ─────────────────────────────────────────────────────────
+        val activeCue = remember(subtitleTrack, position) {
+            subtitleTrack?.cueAt(position)
+        }
         SubtitleOverlay(
-            currentText = currentSubtitle,
-            modifier    = Modifier.align(Alignment.BottomCenter)
+            text     = activeCue?.displayText,
+            isRtl    = activeCue?.baseRtl ?: false,
+            modifier = Modifier.align(Alignment.BottomCenter)
                 .padding(bottom = if (controlsVisible) 80.dp else 24.dp)
         )
 

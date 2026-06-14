@@ -56,7 +56,6 @@ import com.watermelon.common.model.UserIntent
 import com.watermelon.common.repository.FolderRepository
 import com.watermelon.common.repository.MediaRepository
 import com.watermelon.common.repository.PlaylistRepository
-import com.watermelon.common.repository.SubtitleRepository
 import com.watermelon.playback.controller.PlaybackControllerImpl
 import com.watermelon.playback.service.PlaybackConnection
 import com.watermelon.storage.db.WatermelonDatabase
@@ -91,6 +90,9 @@ class MainActivity : ComponentActivity() {
     private val database by lazy { WatermelonDatabase(applicationContext) }
     private val settingsStore by lazy { FolderVisibilityStoreImpl(applicationContext) }
     private val vhsReverseSound by lazy { VhsReverseSound() }
+    private val subtitleRepository by lazy {
+        com.watermelon.subtitle.repository.SubtitleRepositoryImpl(applicationContext)
+    }
     private val phase1Sweep by lazy { Phase1Sweep(contentResolver) }
     private val indexer by lazy {
         MediaStoreIndexer(
@@ -103,9 +105,6 @@ class MainActivity : ComponentActivity() {
     private val folderRepository: FolderRepository   by lazy { FolderRepositoryImpl(indexer) }
     private val playlistRepository: PlaylistRepository by lazy {
         PlaylistRepositoryImpl(database, mediaRepository)
-    }
-    @Suppress("unused") private val subtitleRepository: SubtitleRepository by lazy {
-        SubtitleRepositoryImpl(applicationContext)
     }
 
     // Playback is owned by WatermelonPlaybackService. The Activity connects via a
@@ -235,6 +234,19 @@ class MainActivity : ComponentActivity() {
             mediaController = null
             playbackController = null
         }
+    }
+
+    /**
+     * Discovers and loads a local sidecar subtitle for the given video URI. Resolves the
+     * video's display name + folder from the media repository, then runs local discovery
+     * and fetches the best candidate. Returns null if none found (S1: local only).
+     */
+    private suspend fun discoverSubtitle(uri: String): com.watermelon.common.model.ParsedSubtitle? {
+        val item = runCatching { mediaRepository.getByUri(uri) }.getOrNull() ?: return null
+        return subtitleRepository.parsedFor(
+            mediaItem          = item,
+            preferredLanguages = listOf("fa", "ar", "ur", "ku", "en")
+        )
     }
 
     override fun onDestroy() {
@@ -491,7 +503,15 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         durationMs      = controller.duration.coerceAtLeast(0L),
-                        currentSubtitle = null,
+                        subtitleTrack   = run {
+                            var track by remember(mediaUri) {
+                                mutableStateOf<com.watermelon.common.model.ParsedSubtitle?>(null)
+                            }
+                            LaunchedEffect(mediaUri) {
+                                track = discoverSubtitle(mediaUri)
+                            }
+                            track
+                        },
                         uri             = mediaUri,
                         screenshotMode  = settingsState.screenshotMode,
                         initialBrightness = savedBrightness,

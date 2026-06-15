@@ -43,7 +43,8 @@ fun ControlPanel(
     currentOrientation: ScreenOrientation,
     onOrientationChange: (ScreenOrientation) -> Unit,
     onRepeat: () -> Unit, onShuffle: () -> Unit, onScreenshot: () -> Unit,
-    onSleepTimer: () -> Unit, onPip: () -> Unit, onBackground: () -> Unit, onPlaylist: () -> Unit
+    onSleepTimer: () -> Unit, onPip: () -> Unit, onBackground: () -> Unit, onPlaylist: () -> Unit,
+    onShare: () -> Unit, onFavourite: () -> Unit, onAddToPlaylist: () -> Unit, onDelete: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -99,6 +100,14 @@ fun ControlPanel(
             IconStub(R.drawable.ic_pip, "PiP", isPiP, onPip)
             IconStub(R.drawable.ic_background_play, "Background play", isBackground, onBackground)
             IconStub(R.drawable.ic_playlist_add, "Playlist", false, onPlaylist)
+        }
+        HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
+        PanelLabel("File")
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconStub(R.drawable.ic_share, "Share", false, onShare)
+            IconStub(R.drawable.ic_favorite, "Add to favourites", false, onFavourite)
+            IconStub(R.drawable.ic_playlist_add, "Add to playlist", false, onAddToPlaylist)
+            IconStub(R.drawable.ic_delete, "Delete", false, onDelete)
         }
     }
 }

@@ -416,7 +416,18 @@ class MainActivity : ComponentActivity() {
                         com.watermelon.ui.screens.VhsIntensity.valueOf(
                             prefs.getString("vhs_intensity", "MED") ?: "MED"
                         )
-                    }.getOrDefault(com.watermelon.ui.screens.VhsIntensity.MED)
+                    }.getOrDefault(com.watermelon.ui.screens.VhsIntensity.MED),
+                    subtitleStyle = com.watermelon.common.model.SubtitleStyle(
+                        enabled       = prefs.getBoolean("sub_enabled", true),
+                        sizeSp        = prefs.getInt("sub_size", 18),
+                        textColorArgb = prefs.getLong("sub_color", 0xFFFFFFFF),
+                        position      = runCatching { com.watermelon.common.model.SubtitlePosition.valueOf(prefs.getString("sub_pos", "BOTTOM")!!) }.getOrDefault(com.watermelon.common.model.SubtitlePosition.BOTTOM),
+                        bold          = prefs.getBoolean("sub_bold", false),
+                        italic        = prefs.getBoolean("sub_italic", false),
+                        underline     = prefs.getBoolean("sub_underline", false),
+                        direction     = runCatching { com.watermelon.common.model.SubtitleDirection.valueOf(prefs.getString("sub_dir", "AUTO")!!) }.getOrDefault(com.watermelon.common.model.SubtitleDirection.AUTO),
+                        secondaryDirection = runCatching { com.watermelon.common.model.SubtitleDirection.valueOf(prefs.getString("sub_dir2", "AUTO")!!) }.getOrDefault(com.watermelon.common.model.SubtitleDirection.AUTO)
+                    )
                 )
             )
         }
@@ -503,6 +514,7 @@ class MainActivity : ComponentActivity() {
                         vhsIntensity    = mappedIntensity,
                         onBack          = { navController.popBackStack() },
                         durationMs      = controller.duration.coerceAtLeast(0L),
+                        subtitleStyle   = settingsState.subtitleStyle,
                         subtitleTrack   = run {
                             var track by remember(mediaUri) {
                                 mutableStateOf<com.watermelon.common.model.ParsedSubtitle?>(null)
@@ -598,9 +610,19 @@ class MainActivity : ComponentActivity() {
                     state                   = settingsState,
                     onStateChange           = { newState ->
                         settingsState = newState
+                        val st = newState.subtitleStyle
                         prefs.edit()
                             .putBoolean("vhs_enabled", newState.vhsEnabled)
                             .putString("vhs_intensity", newState.vhsIntensity.name)
+                            .putBoolean("sub_enabled", st.enabled)
+                            .putInt("sub_size", st.sizeSp)
+                            .putLong("sub_color", st.textColorArgb)
+                            .putString("sub_pos", st.position.name)
+                            .putBoolean("sub_bold", st.bold)
+                            .putBoolean("sub_italic", st.italic)
+                            .putBoolean("sub_underline", st.underline)
+                            .putString("sub_dir", st.direction.name)
+                            .putString("sub_dir2", st.secondaryDirection.name)
                             .apply()
                     },
                     onFolderVisibilityClick = { navController.navigate(Routes.FOLDER_VISIBILITY) }

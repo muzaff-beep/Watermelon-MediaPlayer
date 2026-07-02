@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +39,8 @@ data class SettingsState(
     val memorySafety: Boolean        = false,
     val fullFolderAccess: Boolean    = false,
     val screenshotMode: ScreenshotMode = ScreenshotMode.SINGLE,
-    val folderVisibility: Map<String, Boolean> = emptyMap()
+    val folderVisibility: Map<String, Boolean> = emptyMap(),
+    val subtitleStyle: com.watermelon.common.model.SubtitleStyle = com.watermelon.common.model.SubtitleStyle()
 )
 
 enum class VhsIntensity { OFF, LOW, MED, HIGH }
@@ -123,6 +125,37 @@ fun SettingsScreen(
             }
         }
 
+        // ── Subtitles ────────────────────────────────────────────────────────
+        item {
+            SettingsGroup("SUBTITLES") {
+                val st = state.subtitleStyle
+                fun up(new: com.watermelon.common.model.SubtitleStyle) =
+                    onStateChange(state.copy(subtitleStyle = new))
+
+                ToggleRow("Enable subtitles", st.enabled) { up(st.copy(enabled = it)) }
+                StepperRow("Text size", "${st.sizeSp}sp",
+                    onMinus = { up(st.copy(sizeSp = (st.sizeSp - 2).coerceAtLeast(12))) },
+                    onPlus  = { up(st.copy(sizeSp = (st.sizeSp + 2).coerceAtMost(48))) })
+                NavRow("Text color", subtitleColorName(st.textColorArgb), onClick = {
+                    up(st.copy(textColorArgb = nextSubtitleColor(st.textColorArgb)))
+                })
+                NavRow("Position", st.position.name.lowercase().replaceFirstChar { it.uppercase() }, onClick = {
+                    up(st.copy(position = if (st.position == com.watermelon.common.model.SubtitlePosition.BOTTOM)
+                        com.watermelon.common.model.SubtitlePosition.TOP
+                    else com.watermelon.common.model.SubtitlePosition.BOTTOM))
+                })
+                ToggleRow("Bold", st.bold) { up(st.copy(bold = it)) }
+                ToggleRow("Italic", st.italic) { up(st.copy(italic = it)) }
+                ToggleRow("Underline", st.underline) { up(st.copy(underline = it)) }
+                NavRow("Direction", st.direction.label(), onClick = {
+                    up(st.copy(direction = st.direction.next()))
+                })
+                NavRow("2nd sub direction", st.secondaryDirection.label(), onClick = {
+                    up(st.copy(secondaryDirection = st.secondaryDirection.next()))
+                })
+            }
+        }
+
         // ── System ──────────────────────────────────────────────────────────
         item {
             SettingsGroup("SYSTEM") {
@@ -201,5 +234,49 @@ private fun NavRow(label: String, value: String, onClick: () -> Unit, accent: Bo
                     else MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (accent) FontWeight.SemiBold else FontWeight.Normal
         )
+    }
+}
+
+
+// ── Subtitle settings helpers ───────────────────────────────────────────────
+
+private val SUBTITLE_COLORS = listOf(
+    0xFFFFFFFF to "White", 0xFFFFEB3B to "Yellow", 0xFF00E5FF to "Cyan",
+    0xFF69F0AE to "Green", 0xFFFF8A80 to "Coral", 0xFF000000 to "Black"
+)
+
+private fun subtitleColorName(argb: Long): String =
+    SUBTITLE_COLORS.firstOrNull { it.first == argb }?.second ?: "Custom"
+
+private fun nextSubtitleColor(argb: Long): Long {
+    val i = SUBTITLE_COLORS.indexOfFirst { it.first == argb }
+    return SUBTITLE_COLORS[(i + 1) % SUBTITLE_COLORS.size].first
+}
+
+private fun com.watermelon.common.model.SubtitleDirection.label(): String = when (this) {
+    com.watermelon.common.model.SubtitleDirection.AUTO -> "Auto"
+    com.watermelon.common.model.SubtitleDirection.FORCE_RTL -> "Force RTL"
+    com.watermelon.common.model.SubtitleDirection.FORCE_LTR -> "Force LTR"
+}
+
+private fun com.watermelon.common.model.SubtitleDirection.next(): com.watermelon.common.model.SubtitleDirection {
+    val v = com.watermelon.common.model.SubtitleDirection.values()
+    return v[(ordinal + 1) % v.size]
+}
+
+/** Row with -/+ steppers for numerical values. */
+@Composable
+private fun StepperRow(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onMinus) { Text("−", fontSize = 20.sp) }
+            Text(value, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onPlus) { Text("+", fontSize = 20.sp) }
+        }
     }
 }

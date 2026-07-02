@@ -101,6 +101,7 @@ fun PhonePlayerScreen(
     onBack: () -> Unit,
     uri: String = "",
     subtitleTrack: com.watermelon.common.model.ParsedSubtitle? = null,
+    subtitleStyle: com.watermelon.common.model.SubtitleStyle = com.watermelon.common.model.SubtitleStyle(),
     screenshotMode: ScreenshotMode = ScreenshotMode.SINGLE,
     initialBrightness: Float = -1f,
     onPipClick: (() -> Unit)? = null,
@@ -228,7 +229,8 @@ fun PhonePlayerScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            viewModel.onIntent(UserIntent.Pause)
+            // Don't pause if the user chose background play or PiP — that's the whole point.
+            if (!isBackgroundEnabled && !isPiPEnabled) viewModel.onIntent(UserIntent.Pause)
             viewModel.onIntent(UserIntent.SetSpeed(1f))
             // Revert the window brightness to whatever it was before the player opened.
             activity?.window?.let { win ->
@@ -267,11 +269,17 @@ fun PhonePlayerScreen(
 
         // ── Subtitles ───────────────────────────────────────────────────────
         val activeCue = remember(subtitleTrack, position) { subtitleTrack?.cueAt(position) }
+        val subAtTop = subtitleStyle.position == com.watermelon.common.model.SubtitlePosition.TOP
         SubtitleOverlay(
             text = activeCue?.displayText,
             isRtl = activeCue?.baseRtl ?: false,
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .padding(bottom = if (ui.controlsVisible) 80.dp else 24.dp)
+            style = subtitleStyle,
+            modifier = Modifier
+                .align(if (subAtTop) Alignment.TopCenter else Alignment.BottomCenter)
+                .padding(
+                    top = if (subAtTop) (if (ui.controlsVisible) 96.dp else 32.dp) else 0.dp,
+                    bottom = if (!subAtTop) (if (ui.controlsVisible) 80.dp else 24.dp) else 0.dp
+                )
         )
 
         // ── Layer 2: Gesture surface (gated by ui.gesturesEnabled) ──────────
@@ -290,7 +298,7 @@ fun PhonePlayerScreen(
                 .pointerInput(durationMs, ui.gesturesEnabled, showControlPanel) {
                     if (!ui.gesturesEnabled || showControlPanel) return@pointerInput
                     awaitEachGesture {
-                        val firstDown = awaitFirstDown(requireUnconsumed = false)
+                        val firstDown = awaitFirstDown()  // requireUnconsumed=true: ignore touches consumed by controls
                         val holdOriginX = firstDown.position.x
                         holdIsLeft = firstDown.position.x < size.width / 2f
                         isPointerDown = true
@@ -379,7 +387,9 @@ fun PhonePlayerScreen(
                 modifier = Modifier.fillMaxWidth().align(Alignment.TopStart).padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
+                IconButton(onClick = {
+                    if (showControlPanel) showControlPanel = false else onBack()
+                }) {
                     Icon(painterResource(R.drawable.ic_arrow_back), "Back", tint = PlayerColors.iconDefault)
                 }
                 Spacer(Modifier.weight(1f))
@@ -517,14 +527,6 @@ fun PhonePlayerScreen(
             }
         }
 
-        // ── Locked: full overlay blocks all touch; dual-slide to unlock ─────
-        if (ui.isLocked) {
-            com.watermelon.ui.components.LockOverlay(
-                onUnlock = { ui.unlock(); onLockChanged?.invoke(false) },
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
         // ── Layer 4: Transient indicators ───────────────────────────────────
         if (isHolding) {
             Row(
@@ -561,6 +563,14 @@ fun PhonePlayerScreen(
                     .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) { Text(msg, color = PlayerColors.textPrimary) }
+        }
+
+        // ── TOPMOST: lock overlay above everything, blocks all touch ────────
+        if (ui.isLocked) {
+            com.watermelon.ui.components.LockOverlay(
+                onUnlock = { ui.unlock(); onLockChanged?.invoke(false) },
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 

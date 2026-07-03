@@ -41,8 +41,12 @@ fun LockOverlay(
     var showHint by remember { mutableStateOf(true) }
 
     val threshold = 0.6f
+    var unlocked by remember { mutableStateOf(false) }
     LaunchedEffect(leftProgress, rightProgress) {
-        if (leftProgress >= threshold && rightProgress >= threshold) onUnlock()
+        if (leftProgress >= threshold && rightProgress >= threshold) {
+            unlocked = true
+            onUnlock()
+        }
     }
 
     Box(
@@ -65,13 +69,13 @@ fun LockOverlay(
         LockHandle(
             progress = leftProgress,
             onDrag = { delta -> leftProgress = (leftProgress - delta / (heightPx * 0.20f)).coerceIn(0f, 1f) },
-            onRelease = { if (leftProgress < threshold) leftProgress = 0f },
+            onRelease = { if (!unlocked) leftProgress = 0f },
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 32.dp, bottom = 40.dp)
         )
         LockHandle(
             progress = rightProgress,
             onDrag = { delta -> rightProgress = (rightProgress - delta / (heightPx * 0.20f)).coerceIn(0f, 1f) },
-            onRelease = { if (rightProgress < threshold) rightProgress = 0f },
+            onRelease = { if (!unlocked) rightProgress = 0f },
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 40.dp)
         )
     }

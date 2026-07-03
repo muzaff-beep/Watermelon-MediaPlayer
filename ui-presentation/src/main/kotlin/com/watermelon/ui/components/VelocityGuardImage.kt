@@ -80,7 +80,12 @@ private suspend fun loadThumbnail(context: android.content.Context, uri: String?
                     android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC
                 )
                 raw?.let {
-                    val scaled = android.graphics.Bitmap.createScaledBitmap(it, 128, 80, true)
+                    // Preserve aspect ratio — scale to fit within a 128x128 box, never stretch.
+                    val maxDim = 128
+                    val ratio = minOf(maxDim.toFloat() / it.width, maxDim.toFloat() / it.height, 1f)
+                    val w = (it.width * ratio).toInt().coerceAtLeast(1)
+                    val h = (it.height * ratio).toInt().coerceAtLeast(1)
+                    val scaled = android.graphics.Bitmap.createScaledBitmap(it, w, h, true)
                     if (scaled !== it) it.recycle()
                     ThumbnailCache.put(uri, scaled)
                     scaled

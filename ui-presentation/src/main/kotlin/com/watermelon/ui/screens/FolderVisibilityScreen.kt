@@ -42,8 +42,17 @@ fun FolderVisibilityScreen(
             text     = "Hidden folders are excluded from the library index.",
             style    = MaterialTheme.typography.bodySmall,
             color    = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
         )
+        val hiddenCount = folders.count { !it.third }
+        if (hiddenCount > 0) {
+            Text(
+                text     = "$hiddenCount hidden",
+                style    = MaterialTheme.typography.labelMedium,
+                color    = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+            )
+        }
         HorizontalDivider()
 
         if (folders.isEmpty()) {
@@ -56,11 +65,12 @@ fun FolderVisibilityScreen(
             return@Column
         }
 
+        val sortedFolders = folders.sortedBy { it.second.lowercase() }
         LazyColumn(
             modifier            = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            items(folders, key = { it.first }) { (path, displayName, isVisible) ->
+            items(sortedFolders, key = { it.first }) { (path, displayName, isVisible) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

@@ -99,10 +99,18 @@ class FolderViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** All folders (unfiltered) for the visibility settings screen. */
-    val allFoldersForSettings: StateFlow<List<FolderNode>> =
-        folderRepository.observeFolderTree()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /**
+     * All folders (unfiltered) for the visibility settings screen, paired with each folder's
+     * current visibility so the UI reacts immediately to toggles (was previously stale until
+     * leaving/re-entering the screen, since this flow never observed visibilityVersion).
+     */
+    val allFoldersForSettings: StateFlow<List<Pair<FolderNode, Boolean>>> =
+        kotlinx.coroutines.flow.combine(
+            folderRepository.observeFolderTree(),
+            visibilityVersion
+        ) { tree, _ ->
+            tree.map { it to settingsStore.isFolderVisible(it.path) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
      * Backward-compatible flat folder list (playlists + visible storage folders, no headers).

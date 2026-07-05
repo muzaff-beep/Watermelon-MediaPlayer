@@ -57,6 +57,7 @@ import com.watermelon.common.model.PlaybackState
 import com.watermelon.common.model.SleepTimerMode
 import com.watermelon.common.model.UserIntent
 import com.watermelon.ui.R
+import com.watermelon.ui.WatermelonIcons
 import com.watermelon.ui.components.LevelIndicator
 import com.watermelon.ui.components.SleepTimerDialog
 import com.watermelon.ui.components.SubtitleOverlay
@@ -168,17 +169,17 @@ fun PhonePlayerScreen(
     var currentBrightness by remember { mutableFloatStateOf(startBrightness) }
     var showBrightnessIndicator by remember { mutableStateOf(false) }
 
-    // ── VHS: configure + animate (no-op when disabled) ─────────────────────
+    // ─ـ VHS: configure + animate (no-op when disabled) ─────────────────────
     vhs.configure(vhsEnabled, vhsIntensity)
     vhs.DriveAnimation()
 
-    // ── Auto-hide: a single timer reset by any interaction. Stays 5s minimum, and never
+    // ─ـ Auto-hide: a single timer reset by any interaction. Stays 5s minimum, and never
     //    hides while paused, scrubbing, holding, panel open, or locked.
     //
     //    isSeekingFast/isHolding must be keys here, not just checked after delay() —
     //    otherwise a scrub or fast-forward hold that starts and finishes inside the 5s
-    //    window doesn't restart the timer, and controls can vanish mid-gesture right as
-    //    the user reaches for a button. Keying on them cancels + relaunches this effect
+    //    window doesn't restart the timer, and controls can vanish mid-gesture right as the
+    //    user reaches for a button. Keying on them cancels + relaunches this effect
     //    the instant either becomes true, and again once it goes back to false. ──────
     var lastInteraction by remember { mutableLongStateOf(0L) }
     LaunchedEffect(
@@ -293,7 +294,7 @@ fun PhonePlayerScreen(
                 )
         )
 
-        // ── Layer 2: Gesture surface (gated by ui.gesturesEnabled) ──────────
+        // ─ـ Layer 2: Gesture surface (gated by ui.gesturesEnabled) ──────────
         Box(
             Modifier.fillMaxSize()
                 .pointerInput(ui.gesturesEnabled, showControlPanel) {
@@ -338,7 +339,7 @@ fun PhonePlayerScreen(
                                 val zoom = event.calculateZoom()
                                 val pan = event.calculatePan()
                                 if (zoom != 1f) scale = (scale * zoom).coerceIn(1f, 4f)
-                                panOffset = if (scale > 1f) Offset(panOffset.x + pan.x, panOffset.y + pan.y) else Offset.Zero
+                                panOffset = if (scale > 1f) Offset(panOffset.x + pan.x, panOffset.y + panOffset.y) else Offset.Zero
                                 event.changes.forEach { it.consume() }
                             } else if (pointerCount == 1 && !isMultiTouch) {
                                 val change = pressed.first()
@@ -538,7 +539,7 @@ fun PhonePlayerScreen(
             }
         }
 
-        // ── Layer 4: Transient indicators ───────────────────────────────────
+        // ─ـ Layer 4: Transient indicators ───────────────────────────────────
         if (isHolding) {
             Row(
                 modifier = Modifier.align(Alignment.Center)
@@ -576,7 +577,7 @@ fun PhonePlayerScreen(
             ) { Text(msg, color = PlayerColors.textPrimary) }
         }
 
-        // ── TOPMOST: lock overlay above everything, blocks all touch ────────
+        // ─ـ TOPMOST: lock overlay above everything, blocks all touch ────────
         if (ui.isLocked) {
             com.watermelon.ui.components.LockOverlay(
                 onUnlock = { ui.unlock(); onLockChanged?.invoke(false) },
@@ -585,7 +586,7 @@ fun PhonePlayerScreen(
         }
     }
 
-    // ── Layer 5: Sleep timer dialog ─────────────────────────────────────────
+    // ─ـ Layer 5: Sleep timer dialog ─────────────────────────────────────────
     if (showSleepTimerDialog) {
         SleepTimerDialog(
             onDismiss = { showSleepTimerDialog = false },

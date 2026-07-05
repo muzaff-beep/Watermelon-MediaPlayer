@@ -80,13 +80,34 @@ private suspend fun loadThumbnail(context: android.content.Context, uri: String?
                     android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC
                 )
                 raw?.let {
+                    // getFrameAtTime() returns the frame as decoded, ignoring the video's
+                    // rotation metadata. A portrait phone video is typically stored as a
+                    // landscape frame (e.g. 1920x1080) plus a 90°/270° rotation flag — without
+                    // correcting for it here, `it.width`/`it.height` describe the un-rotated
+                    // landscape frame, so the "aspect ratio preserving" scale below preserves
+                    // the *wrong* ratio and the result comes out sideways/squashed once shown
+                    // upright. Rotate first so width/height (and everything downstream) reflect
+                    // the video's actual on-screen orientation.
+                    val rotationDegrees = retriever.extractMetadata(
+                        android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION
+                    )?.toIntOrNull() ?: 0
+                    val oriented = if (rotationDegrees != 0) {
+                        val matrix = android.graphics.Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+                        val rotated = android.graphics.Bitmap.createBitmap(
+                            it, 0, 0, it.width, it.height, matrix, true
+                        )
+                        if (rotated !== it) it.recycle()
+                        rotated
+                    } else {
+                        it
+                    }
                     // Preserve aspect ratio — scale to fit within a 128x128 box, never stretch.
                     val maxDim = 128
-                    val ratio = minOf(maxDim.toFloat() / it.width, maxDim.toFloat() / it.height, 1f)
-                    val w = (it.width * ratio).toInt().coerceAtLeast(1)
-                    val h = (it.height * ratio).toInt().coerceAtLeast(1)
-                    val scaled = android.graphics.Bitmap.createScaledBitmap(it, w, h, true)
-                    if (scaled !== it) it.recycle()
+                    val ratio = minOf(maxDim.toFloat() / oriented.width, maxDim.toFloat() / oriented.height, 1f)
+                    val w = (oriented.width * ratio).toInt().coerceAtLeast(1)
+                    val h = (oriented.height * ratio).toInt().coerceAtLeast(1)
+                    val scaled = android.graphics.Bitmap.createScaledBitmap(oriented, w, h, true)
+                    if (scaled !== oriented) oriented.recycle()
                     ThumbnailCache.put(uri, scaled)
                     scaled
                 }

@@ -57,7 +57,10 @@ class PlaylistRepositoryImpl(
     ) { allMediaUnfiltered, userPlaylists, _ ->
         val allMedia = visibleMedia(allMediaUnfiltered)
         val now = System.currentTimeMillis()
-        val recentCount = allMedia.count { it.firstSeenAt >= now - sevenDaysMs }
+        val recentCount = allMedia.count {
+            val ts = if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt
+            ts >= now - sevenDaysMs
+        }
         val favCount = getFavouriteCount(allMedia)
         val continueWatchingCount = getContinueWatchingCount(allMedia)
 

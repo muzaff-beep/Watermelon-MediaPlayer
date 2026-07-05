@@ -549,6 +549,14 @@ class MainActivity : ComponentActivity() {
                             prefs.edit().putFloat("brightness", brightness).apply()
                         },
                         onSkipToTrack = { newUri ->
+                            // Skipping to another track from inside the player is a real
+                            // "opened this video" event just like tapping it in a list —
+                            // without this, the new/unwatched star only clears when the
+                            // video is opened directly from a folder/playlist screen, not
+                            // when reached via next/previous while already playing.
+                            lifecycleScope.launch {
+                                runCatching { mediaRepository.markAsPlayed(newUri) }
+                            }
                             navController.navigate("player/${Uri.encode(newUri)}") {
                                 popUpTo("player/{uri}") { inclusive = true }
                             }

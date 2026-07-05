@@ -24,5 +24,7 @@ data class FolderNode(
 ) {
     val isPlaylist: Boolean get() = playlistId != null
     val isSystemPlaylist: Boolean get() =
-        playlistType == PlaylistType.RECENTLY_ADDED || playlistType == PlaylistType.FAVOURITES
+        playlistType == PlaylistType.RECENTLY_ADDED ||
+        playlistType == PlaylistType.FAVOURITES ||
+        playlistType == PlaylistType.CONTINUE_WATCHING
 }

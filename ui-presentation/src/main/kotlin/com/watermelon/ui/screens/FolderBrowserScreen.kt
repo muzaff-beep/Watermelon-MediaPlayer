@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.watermelon.common.model.FolderNode
 import com.watermelon.ui.R
+import com.watermelon.ui.WatermelonIcons
 import com.watermelon.ui.components.FolderListItem
 import com.watermelon.ui.components.LabeledIconButton
 import com.watermelon.ui.viewmodel.BrowserRow
@@ -108,13 +109,13 @@ fun FolderBrowserScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             LabeledIconButton(
-                iconRes = if (isGrid) R.drawable.ic_view_list else R.drawable.ic_view_grid,
+                icon    = if (isGrid) WatermelonIcons.ViewList else WatermelonIcons.ViewGrid,
                 label   = if (isGrid) "List" else "Grid",
                 onClick = { currentLayout = if (isGrid) FolderLayout.LIST else FolderLayout.GRID }
             )
             Box {
                 LabeledIconButton(
-                    iconRes = R.drawable.ic_sort_name,
+                    icon    = WatermelonIcons.Sort,
                     label   = "Sort: ${currentSort.label()}",
                     onClick = { sortMenuOpen = true }
                 )
@@ -128,13 +129,13 @@ fun FolderBrowserScreen(
                 }
             }
             LabeledIconButton(
-                iconRes = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
+                icon    = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
                 label   = if (ascending) "Ascending" else "Descending",
                 onClick = { ascending = !ascending }
             )
             ItemSize.values().forEach { size ->
                 LabeledIconButton(
-                    iconRes = when (size) {
+                    icon    = when (size) {
                         ItemSize.SMALL  -> R.drawable.ic_size_small
                         ItemSize.MEDIUM -> R.drawable.ic_size_medium
                         ItemSize.LARGE  -> R.drawable.ic_size_large
@@ -145,7 +146,7 @@ fun FolderBrowserScreen(
                 )
             }
             LabeledIconButton(
-                iconRes = R.drawable.ic_settings,
+                icon    = WatermelonIcons.Settings,
                 label   = "Settings",
                 onClick = onSettingsClick
             )

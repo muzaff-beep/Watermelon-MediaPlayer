@@ -38,22 +38,23 @@ fun LevelIndicator(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = PlayerColors.levelIcon,
+            tint = PlayerColors.current.levelIcon,
             modifier = Modifier.size(24.dp)
         )
+        val colors = PlayerColors.current
         Canvas(modifier = Modifier.weight(1f).width(8.dp)) {
-            drawLevel(fraction.coerceIn(0f, 1f))
+            drawLevel(colors, fraction.coerceIn(0f, 1f))
         }
     }
 }
 
-private fun DrawScope.drawLevel(fraction: Float) {
+private fun DrawScope.drawLevel(colors: PlayerColors.Scheme, fraction: Float) {
     val w = size.width
     val h = size.height
     val radius = CornerRadius(w / 2f, w / 2f)
     // track
     drawRoundRect(
-        color = PlayerColors.levelTrack,
+        color = colors.levelTrack,
         topLeft = Offset(0f, 0f),
         size = Size(w, h),
         cornerRadius = radius
@@ -61,7 +62,7 @@ private fun DrawScope.drawLevel(fraction: Float) {
     // fill from the bottom up
     val fillH = h * fraction
     drawRoundRect(
-        color = PlayerColors.levelFill,
+        color = colors.levelFill,
         topLeft = Offset(0f, h - fillH),
         size = Size(w, fillH),
         cornerRadius = radius

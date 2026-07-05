@@ -1,56 +1,99 @@
 package com.watermelon.ui.theme
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 /**
- * Single source of truth for the player's visual palette (watermelon brand).
+ * Single source of truth for the player's visual palette — now the same WVGC brand
+ * palette used by [WatermelonColors] / [WatermelonTheme], in both a dark and a light
+ * [Scheme]. The player screens draw with plain Canvas calls and don't go through
+ * Material3's colorScheme, so they read [PlayerColors.current] instead, which resolves
+ * against [LocalWatermelonDarkTheme] — the same flag the Settings dark/light toggle sets.
  *
- * MODULARITY: components must reference the *semantic roles* below (e.g. [seekBarFill],
- * [iconActive]) — never the raw [Palette] hex values directly. To retune the player's look,
- * edit the role mappings here in one place; every control, custom seekbar, level indicator,
- * sheet, and icon updates automatically.
+ * MODULARITY: components must reference the *semantic roles* on [current] (e.g.
+ * [Scheme.seekBarFill], [Scheme.iconActive]) — never [Palette] hex values directly.
  */
 object PlayerColors {
 
-    /** Raw brand palette. Do not reference these directly from components. */
+    /** Raw WVGC brand palette. Do not reference these directly from components. */
     object Palette {
-        val PrimaryRed   = Color(0xFFCE1126)  // watermelon flesh
-        val PrimaryGreen = Color(0xFF007A3D)  // watermelon rind
-        val Background   = Color(0xFF000000)  // main dark background
-        val White        = Color(0xFFFFFFFF)  // text, icons, light elements
-        val DarkSurface  = Color(0xFF1A1A1A)  // cards, sheets, elevated surfaces
+        val WatermelonRed = WatermelonColors.Palette.WatermelonRed
+        val FreshTeal      = WatermelonColors.Palette.FreshTeal
+        val DeepNavy       = WatermelonColors.Palette.DeepNavy
+        val Charcoal       = WatermelonColors.Palette.Charcoal
+        val SlateGray      = WatermelonColors.Palette.SlateGray
+        val OffWhite       = WatermelonColors.Palette.OffWhite
+        val DeepCharcoal   = WatermelonColors.Palette.DeepCharcoal
     }
 
-    // ── Semantic roles (reference THESE from components) ────────────────────────
+    /** One full set of semantic player tokens. */
+    data class Scheme(
+        val background: Color,
+        val sheetBackground: Color,
+        val controlBarScrim: Color,
+        val seekBarFill: Color,
+        val seekBarBuffered: Color,
+        val seekBarTrack: Color,
+        val seekBarThumb: Color,
+        val seekBarThumbRing: Color,
+        val iconActive: Color,
+        val iconDefault: Color,
+        val iconInactive: Color,
+        val iconFocus: Color,
+        val levelFill: Color,
+        val levelTrack: Color,
+        val levelIcon: Color,
+        val textPrimary: Color,
+        val textSecondary: Color,
+        val accent: Color,
+        val accentSecondary: Color
+    )
 
-    // Backgrounds / surfaces
-    val background       = Palette.Background
-    val sheetBackground  = Palette.DarkSurface
-    val controlBarScrim  = Palette.Background       // used with alpha as a gradient
+    val Dark = Scheme(
+        background       = Palette.Charcoal,
+        sheetBackground  = Palette.DeepCharcoal,
+        controlBarScrim  = Palette.Charcoal,
+        seekBarFill      = Palette.WatermelonRed,
+        seekBarBuffered  = Palette.OffWhite.copy(alpha = 0.30f),
+        seekBarTrack     = Palette.OffWhite.copy(alpha = 0.18f),
+        seekBarThumb     = Palette.WatermelonRed,
+        seekBarThumbRing = Palette.OffWhite,
+        iconActive       = Palette.WatermelonRed,
+        iconDefault      = Palette.OffWhite,
+        iconInactive     = Palette.OffWhite.copy(alpha = 0.55f),
+        iconFocus        = Palette.FreshTeal,
+        levelFill        = Palette.WatermelonRed,
+        levelTrack       = Palette.OffWhite.copy(alpha = 0.20f),
+        levelIcon        = Palette.OffWhite,
+        textPrimary      = Palette.OffWhite,
+        textSecondary    = Palette.OffWhite.copy(alpha = 0.70f),
+        accent           = Palette.WatermelonRed,
+        accentSecondary  = Palette.FreshTeal
+    )
 
-    // Seekbar
-    val seekBarFill      = Palette.PrimaryRed
-    val seekBarBuffered  = Palette.White.copy(alpha = 0.30f)
-    val seekBarTrack     = Palette.White.copy(alpha = 0.18f)
-    val seekBarThumb     = Palette.PrimaryRed
-    val seekBarThumbRing = Palette.White
+    val Light = Scheme(
+        background       = Palette.OffWhite,
+        sheetBackground  = Color(0xFFFFFFFF),
+        controlBarScrim  = Palette.OffWhite,
+        seekBarFill      = Palette.WatermelonRed,
+        seekBarBuffered  = Palette.DeepNavy.copy(alpha = 0.25f),
+        seekBarTrack     = Palette.SlateGray.copy(alpha = 0.25f),
+        seekBarThumb     = Palette.WatermelonRed,
+        seekBarThumbRing = Color(0xFFFFFFFF),
+        iconActive       = Palette.WatermelonRed,
+        iconDefault      = Palette.DeepNavy,
+        iconInactive     = Palette.SlateGray,
+        iconFocus        = Palette.FreshTeal,
+        levelFill        = Palette.WatermelonRed,
+        levelTrack       = Palette.SlateGray.copy(alpha = 0.25f),
+        levelIcon        = Palette.DeepNavy,
+        textPrimary      = Palette.Charcoal,
+        textSecondary    = Palette.SlateGray,
+        accent           = Palette.WatermelonRed,
+        accentSecondary  = Palette.FreshTeal
+    )
 
-    // Icons / buttons
-    val iconActive       = Palette.PrimaryRed
-    val iconDefault      = Palette.White
-    val iconInactive     = Palette.White.copy(alpha = 0.55f)
-    val iconFocus        = Palette.PrimaryGreen     // D-pad focus (TV) / pressed accent
-
-    // Level indicators (brightness / volume)
-    val levelFill        = Palette.PrimaryRed
-    val levelTrack       = Palette.White.copy(alpha = 0.20f)
-    val levelIcon        = Palette.White
-
-    // Text
-    val textPrimary      = Palette.White
-    val textSecondary    = Palette.White.copy(alpha = 0.70f)
-
-    // Accents
-    val accent           = Palette.PrimaryRed
-    val accentSecondary  = Palette.PrimaryGreen
+    /** Resolves to [Dark] or [Light] based on the active theme (Settings → Pure dark theme). */
+    val current: Scheme
+        @Composable get() = if (LocalWatermelonDarkTheme.current) Dark else Light
 }

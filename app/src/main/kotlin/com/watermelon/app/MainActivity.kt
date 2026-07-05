@@ -188,10 +188,27 @@ class MainActivity : ComponentActivity() {
         else permissionLauncher.launch(requiredPermissions)
 
         setContent {
-            WatermelonTheme {
+            // Dark/light mode is bound to Settings → Appearance → "Pure dark theme" and
+            // persisted so it survives process death. Hoisted above WatermelonTheme (rather
+            // than left inside WatermelonNavHost/settingsState) so toggling it recomposes
+            // the Material3 colorScheme + PlayerColors.current at the theme root.
+            var pureDarkTheme by remember {
+                mutableStateOf(prefs.getBoolean("pure_dark", true))
+            }
+            WatermelonTheme(darkTheme = pureDarkTheme) {
                 val navController = rememberNavController()
-                if (permissionsGranted) WatermelonNavHost(navController)
-                else PermissionPrompt(onRequest = { permissionLauncher.launch(requiredPermissions) })
+                if (permissionsGranted) {
+                    WatermelonNavHost(
+                        navController = navController,
+                        pureDarkTheme = pureDarkTheme,
+                        onPureDarkThemeChange = { enabled ->
+                            pureDarkTheme = enabled
+                            prefs.edit().putBoolean("pure_dark", enabled).apply()
+                        }
+                    )
+                } else {
+                    PermissionPrompt(onRequest = { permissionLauncher.launch(requiredPermissions) })
+                }
             }
         }
     }
@@ -414,10 +431,15 @@ class MainActivity : ComponentActivity() {
 
 
     @Composable
-    private fun WatermelonNavHost(navController: NavHostController) {
+    private fun WatermelonNavHost(
+        navController: NavHostController,
+        pureDarkTheme: Boolean,
+        onPureDarkThemeChange: (Boolean) -> Unit
+    ) {
         var settingsState by remember {
             mutableStateOf(
                 SettingsState(
+                    pureDark     = pureDarkTheme,
                     vhsEnabled   = prefs.getBoolean("vhs_enabled", true),
                     vhsIntensity = runCatching {
                         com.watermelon.ui.screens.VhsIntensity.valueOf(
@@ -634,6 +656,11 @@ class MainActivity : ComponentActivity() {
                             .putBoolean("vhs_enabled", newState.vhsEnabled)
                             .putString("vhs_intensity", newState.vhsIntensity.name)
                             .apply()
+                        // "Pure dark theme" drives the actual dark/light MaterialTheme +
+                        // PlayerColors.current at the composition root — propagate + persist.
+                        if (newState.pureDark != pureDarkTheme) {
+                            onPureDarkThemeChange(newState.pureDark)
+                        }
                     },
                     onFolderVisibilityClick = { navController.navigate(Routes.FOLDER_VISIBILITY) }
                 )

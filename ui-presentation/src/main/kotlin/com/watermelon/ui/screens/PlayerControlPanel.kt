@@ -50,7 +50,7 @@ fun ControlPanel(
 ) {
     Column(
         modifier = modifier
-            .background(PlayerColors.sheetBackground.copy(alpha = 0.95f), RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))
+            .background(PlayerColors.current.sheetBackground.copy(alpha = 0.95f), RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -59,7 +59,7 @@ fun ControlPanel(
             SPEEDS.forEach { speed ->
                 val active = speed == currentSpeed
                 TextButton(onClick = { onSpeedChange(speed) }, modifier = Modifier.height(32.dp)) {
-                    Text(formatSpeed(speed), color = if (active) PlayerColors.iconActive else PlayerColors.iconDefault,
+                    Text(formatSpeed(speed), color = if (active) PlayerColors.current.iconActive else PlayerColors.current.iconDefault,
                         fontSize = 12.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
                 }
             }
@@ -70,7 +70,7 @@ fun ControlPanel(
             VideoRatio.values().forEach { ratio ->
                 val active = ratio == currentRatio
                 TextButton(onClick = { onRatioChange(ratio) }, modifier = Modifier.height(32.dp)) {
-                    Text(ratio.label, color = if (active) PlayerColors.iconActive else PlayerColors.iconDefault,
+                    Text(ratio.label, color = if (active) PlayerColors.current.iconActive else PlayerColors.current.iconDefault,
                         fontSize = 12.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
                 }
             }
@@ -82,7 +82,7 @@ fun ControlPanel(
                 val active = orientation == currentOrientation
                 IconButton(onClick = { onOrientationChange(orientation) }) {
                     Icon(painterResource(orientation.iconRes), orientation.name,
-                        tint = if (active) PlayerColors.iconActive else PlayerColors.iconDefault,
+                        tint = if (active) PlayerColors.current.iconActive else PlayerColors.current.iconDefault,
                         modifier = Modifier.width(20.dp).height(20.dp))
                 }
             }
@@ -125,7 +125,7 @@ fun ControlPanel(
 
 @Composable
 private fun PanelLabel(text: String) {
-    Text(text, color = PlayerColors.textSecondary, fontSize = 11.sp)
+    Text(text, color = PlayerColors.current.textSecondary, fontSize = 11.sp)
 }
 
 @Composable
@@ -134,12 +134,12 @@ private fun IconStub(icon: Any, description: String, active: Boolean, onClick: (
         when (icon) {
             is androidx.compose.ui.graphics.vector.ImageVector -> {
                 Icon(icon, description,
-                    tint = if (active) PlayerColors.iconActive else PlayerColors.iconDefault,
+                    tint = if (active) PlayerColors.current.iconActive else PlayerColors.current.iconDefault,
                     modifier = Modifier.width(22.dp).height(22.dp))
             }
             is Int -> {
                 Icon(painterResource(icon), description,
-                    tint = if (active) PlayerColors.iconActive else PlayerColors.iconDefault,
+                    tint = if (active) PlayerColors.current.iconActive else PlayerColors.current.iconDefault,
                     modifier = Modifier.width(22.dp).height(22.dp))
             }
             else -> {}

@@ -43,6 +43,7 @@ fun WatermelonSeekBar(
     val liveFraction = if (durationMs > 0)
         (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val fraction = if (scrubbing) scrubFraction else liveFraction
+    val colors = PlayerColors.current
 
     Canvas(
         modifier = modifier
@@ -71,11 +72,12 @@ fun WatermelonSeekBar(
             }
     ) {
         widthPx = size.width
-        drawSeekBar(fraction, trackHeight.toPx(), thumbRadius.toPx(), scrubbing)
+        drawSeekBar(colors, fraction, trackHeight.toPx(), thumbRadius.toPx(), scrubbing)
     }
 }
 
 private fun DrawScope.drawSeekBar(
+    colors: PlayerColors.Scheme,
     fraction: Float,
     trackH: Float,
     thumbR: Float,
@@ -89,21 +91,21 @@ private fun DrawScope.drawSeekBar(
 
     // track (dim)
     drawRoundRect(
-        color = PlayerColors.seekBarTrack,
+        color = colors.seekBarTrack,
         topLeft = Offset(left, cy - trackH / 2f),
         size = Size(usableW, trackH),
         cornerRadius = CornerRadius(trackH / 2f, trackH / 2f)
     )
     // played fill (watermelon red)
     drawRoundRect(
-        color = PlayerColors.seekBarFill,
+        color = colors.seekBarFill,
         topLeft = Offset(left, cy - trackH / 2f),
         size = Size((fillX - left).coerceAtLeast(0f), trackH),
         cornerRadius = CornerRadius(trackH / 2f, trackH / 2f)
     )
     // thumb: white ring + red core, grows slightly while scrubbing
     val r = if (scrubbing) thumbR * 1.25f else thumbR
-    drawCircle(color = PlayerColors.seekBarThumbRing, radius = r + 2f, center = Offset(fillX, cy))
-    drawCircle(color = PlayerColors.seekBarThumb, radius = r, center = Offset(fillX, cy))
+    drawCircle(color = colors.seekBarThumbRing, radius = r + 2f, center = Offset(fillX, cy))
+    drawCircle(color = colors.seekBarThumb, radius = r, center = Offset(fillX, cy))
 }
     

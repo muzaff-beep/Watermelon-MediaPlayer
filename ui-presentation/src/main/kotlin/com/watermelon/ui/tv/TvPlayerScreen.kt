@@ -27,10 +27,10 @@ fun TvPlayerScreen(
     surface: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.fillMaxSize().background(PlayerColors.background),
+    Box(modifier = modifier.fillMaxSize().background(PlayerColors.current.background),
         contentAlignment = Alignment.Center) {
         surface(Modifier.fillMaxSize())
         // Intentionally minimal — full TV control UX is a separate, deliberate chapter.
-        Text("", color = PlayerColors.textPrimary)
+        Text("", color = PlayerColors.current.textPrimary)
     }
 }

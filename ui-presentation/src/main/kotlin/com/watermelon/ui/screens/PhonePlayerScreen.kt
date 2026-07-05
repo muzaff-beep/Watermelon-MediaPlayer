@@ -260,7 +260,7 @@ fun PhonePlayerScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().background(PlayerColors.background)) {
+    Box(modifier = modifier.fillMaxSize().background(PlayerColors.current.background)) {
 
         // ── Layer 1: Video surface (+ VHS render effect, no pause dim) ──────
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -386,12 +386,12 @@ fun PhonePlayerScreen(
             // Top scrim gradient behind the top bar
             Box(
                 Modifier.fillMaxWidth().height(96.dp).align(Alignment.TopCenter)
-                    .background(Brush.verticalGradient(listOf(PlayerColors.controlBarScrim.copy(alpha = 0.6f), Color.Transparent)))
+                    .background(Brush.verticalGradient(listOf(PlayerColors.current.controlBarScrim.copy(alpha = 0.6f), Color.Transparent)))
             )
             // Bottom scrim gradient behind the bottom bar
             Box(
                 Modifier.fillMaxWidth().height(140.dp).align(Alignment.BottomCenter)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, PlayerColors.controlBarScrim.copy(alpha = 0.7f))))
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, PlayerColors.current.controlBarScrim.copy(alpha = 0.7f))))
             )
 
             // Top bar: back · spacer · lock · more
@@ -402,14 +402,14 @@ fun PhonePlayerScreen(
                 IconButton(onClick = {
                     if (showControlPanel) showControlPanel = false else onBack()
                 }) {
-                    Icon(painterResource(R.drawable.ic_arrow_back), "Back", tint = PlayerColors.iconDefault)
+                    Icon(painterResource(R.drawable.ic_arrow_back), "Back", tint = PlayerColors.current.iconDefault)
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { ui.lock(); onLockChanged?.invoke(true) }) {
-                    Icon(painterResource(R.drawable.ic_lock), "Lock", tint = PlayerColors.iconDefault)
+                    Icon(painterResource(R.drawable.ic_lock), "Lock", tint = PlayerColors.current.iconDefault)
                 }
                 IconButton(onClick = { showControlPanel = !showControlPanel }) {
-                    Icon(painterResource(R.drawable.ic_more_horizontal), "Menu", tint = if (showControlPanel) PlayerColors.iconActive else PlayerColors.iconDefault)
+                    Icon(painterResource(R.drawable.ic_more_horizontal), "Menu", tint = if (showControlPanel) PlayerColors.current.iconActive else PlayerColors.current.iconDefault)
                 }
             }
 
@@ -432,14 +432,14 @@ fun PhonePlayerScreen(
                     run { lastInteraction = System.nanoTime(); ui.showControls() }
                 }) {
                     Icon(painterResource(R.drawable.ic_skip_previous), "Previous track",
-                        tint = PlayerColors.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
+                        tint = PlayerColors.current.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
                 }
                 IconButton(onClick = {
                     viewModel.onIntent(UserIntent.Seek((position - 10_000L).coerceAtLeast(0L)))
                     run { lastInteraction = System.nanoTime(); ui.showControls() }
                 }) {
                     Icon(painterResource(R.drawable.ic_rewind), "Skip back 10s",
-                        tint = PlayerColors.iconDefault, modifier = Modifier.width(34.dp).height(34.dp))
+                        tint = PlayerColors.current.iconDefault, modifier = Modifier.width(34.dp).height(34.dp))
                 }
                 IconButton(
                     onClick = { viewModel.onIntent(if (isPlaying) UserIntent.Pause else UserIntent.Resume) }
@@ -447,7 +447,7 @@ fun PhonePlayerScreen(
                     Icon(
                         painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play),
                         if (isPlaying) "Pause" else "Play",
-                        tint = PlayerColors.iconDefault,
+                        tint = PlayerColors.current.iconDefault,
                         modifier = Modifier.width(52.dp).height(52.dp)
                     )
                 }
@@ -456,7 +456,7 @@ fun PhonePlayerScreen(
                     run { lastInteraction = System.nanoTime(); ui.showControls() }
                 }) {
                     Icon(painterResource(R.drawable.ic_fast_forward), "Skip forward 10s",
-                        tint = PlayerColors.iconDefault, modifier = Modifier.width(34.dp).height(34.dp))
+                        tint = PlayerColors.current.iconDefault, modifier = Modifier.width(34.dp).height(34.dp))
                 }
                 // Next track: INVISIBLE when there is no adjacent next file.
                 if (hasNextTrack) {
@@ -465,7 +465,7 @@ fun PhonePlayerScreen(
                         run { lastInteraction = System.nanoTime(); ui.showControls() }
                     }) {
                         Icon(painterResource(R.drawable.ic_skip_next), "Next track",
-                            tint = PlayerColors.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
+                            tint = PlayerColors.current.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
                     }
                 }
             }
@@ -475,9 +475,9 @@ fun PhonePlayerScreen(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(Modifier.fillMaxWidth()) {
-                    Text(formatTime(position), color = PlayerColors.textPrimary)
+                    Text(formatTime(position), color = PlayerColors.current.textPrimary)
                     Spacer(Modifier.weight(1f))
-                    Text(formatTime(durationMs), color = PlayerColors.textPrimary)
+                    Text(formatTime(durationMs), color = PlayerColors.current.textPrimary)
                 }
                 WatermelonSeekBar(
                     positionMs = position,
@@ -548,9 +548,9 @@ fun PhonePlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (holdIsLeft) Icon(painterResource(R.drawable.ic_rewind), null, tint = PlayerColors.iconDefault, modifier = Modifier.width(24.dp).height(24.dp))
-                Text("${holdSpeed.toInt()}×", color = PlayerColors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                if (!holdIsLeft) Icon(painterResource(R.drawable.ic_fast_forward), null, tint = PlayerColors.iconDefault, modifier = Modifier.width(24.dp).height(24.dp))
+                if (holdIsLeft) Icon(painterResource(R.drawable.ic_rewind), null, tint = PlayerColors.current.iconDefault, modifier = Modifier.width(24.dp).height(24.dp))
+                Text("${holdSpeed.toInt()}×", color = PlayerColors.current.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                if (!holdIsLeft) Icon(painterResource(R.drawable.ic_fast_forward), null, tint = PlayerColors.current.iconDefault, modifier = Modifier.width(24.dp).height(24.dp))
             }
         }
         if (showVolumeIndicator) {
@@ -574,7 +574,7 @@ fun PhonePlayerScreen(
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 60.dp)
                     .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) { Text(msg, color = PlayerColors.textPrimary) }
+            ) { Text(msg, color = PlayerColors.current.textPrimary) }
         }
 
         // ── TOPMOST: lock overlay above everything, blocks all touch ────────

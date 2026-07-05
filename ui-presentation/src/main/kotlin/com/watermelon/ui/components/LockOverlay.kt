@@ -61,7 +61,7 @@ fun LockOverlay(
         if (showHint) {
             Text(
                 "Slide both locks up together to unlock",
-                color = PlayerColors.textSecondary,
+                color = PlayerColors.current.textSecondary,
                 fontSize = 13.sp,
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp)
             )
@@ -94,7 +94,7 @@ private fun LockHandle(
         modifier = modifier
             .size(56.dp)
             .graphicsLayer { translationY = -animated * 120f }
-            .background(PlayerColors.sheetBackground.copy(alpha = 0.9f), RoundedCornerShape(28.dp))
+            .background(PlayerColors.current.sheetBackground.copy(alpha = 0.9f), RoundedCornerShape(28.dp))
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onDragEnd = { onRelease() },
@@ -109,7 +109,7 @@ private fun LockHandle(
         Icon(
             painterResource(if (open) R.drawable.ic_lock_open else R.drawable.ic_lock),
             contentDescription = "Slide up to unlock",
-            tint = if (open) PlayerColors.iconActive else PlayerColors.iconDefault,
+            tint = if (open) PlayerColors.current.iconActive else PlayerColors.current.iconDefault,
             modifier = Modifier.size(26.dp)
         )
     }

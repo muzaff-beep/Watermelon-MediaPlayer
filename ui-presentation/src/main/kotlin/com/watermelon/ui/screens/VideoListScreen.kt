@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -57,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.watermelon.common.model.MediaItem
 import com.watermelon.common.model.Playlist
 import com.watermelon.ui.R
+import com.watermelon.ui.WatermelonIcons
 import com.watermelon.ui.components.LabeledIconButton
 import com.watermelon.ui.components.VelocityGuardImage
 import com.watermelon.ui.components.VideoSelectionBar
@@ -174,7 +174,7 @@ fun VideoListScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
             }
-        )
+        }
     }
 
     // Playlist picker dialog
@@ -200,14 +200,14 @@ fun VideoListScreen(
                             "No playlists yet. Create one in the folder browser.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showPlaylistPicker = false }) { Text("Cancel") }
             }
-        )
+        }
     }
 
     Scaffold(
@@ -245,13 +245,13 @@ fun VideoListScreen(
                 } else {
                     // Normal toolbar
                     LabeledIconButton(
-                        iconRes = if (isGrid) R.drawable.ic_view_list else R.drawable.ic_view_grid,
+                        icon    = if (isGrid) WatermelonIcons.ViewList else WatermelonIcons.ViewGrid,
                         label   = if (isGrid) "List" else "Grid",
                         onClick = { currentLayout = if (isGrid) VideoLayout.LIST else VideoLayout.GRID }
                     )
                     Box {
                         LabeledIconButton(
-                            iconRes = R.drawable.ic_sort_name,
+                            icon    = WatermelonIcons.Sort,
                             label   = "Sort: ${currentSort.label}",
                             onClick = { sortMenuOpen = true }
                         )
@@ -265,13 +265,13 @@ fun VideoListScreen(
                         }
                     }
                     LabeledIconButton(
-                        iconRes = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
+                        icon    = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
                         label   = if (ascending) "Ascending" else "Descending",
                         onClick = { ascending = !ascending }
                     )
                     ItemSize.values().forEach { size ->
                         LabeledIconButton(
-                            iconRes = when (size) {
+                            icon    = when (size) {
                                 ItemSize.SMALL  -> R.drawable.ic_size_small
                                 ItemSize.MEDIUM -> R.drawable.ic_size_medium
                                 ItemSize.LARGE  -> R.drawable.ic_size_large
@@ -319,7 +319,7 @@ fun VideoListScreen(
                                     }
                                 },
                                 onLongClick     = { viewModel.onLongPress(item.uri) }
-                            )
+                            }
                         }
                     }
 
@@ -348,7 +348,7 @@ fun VideoListScreen(
                                     }
                                 },
                                 onLongClick     = { viewModel.onLongPress(item.uri) }
-                            )
+                            }
                         }
                     }
                 }
@@ -424,8 +424,8 @@ private fun VideoListItem(
             modifier = clickModifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+                verticalAlignment = Alignment.CenterVertically
+            ) {
             VelocityGuardImage(
                 uri             = item.uri,
                 durationMs      = item.durationMs,
@@ -464,8 +464,6 @@ private fun VideoListItem(
     }
 }
 
-private fun formatDuration(ms: Long): String {
-    val s = (ms / 1000).coerceAtLeast(0)
-    val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+private fun formatDuration(ms: Long): String =
+    if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }

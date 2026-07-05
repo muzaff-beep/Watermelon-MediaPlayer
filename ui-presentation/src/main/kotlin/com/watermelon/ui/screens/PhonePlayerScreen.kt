@@ -86,7 +86,10 @@ import kotlin.math.roundToLong
  *   5. Panels / dialogs       — control panel, sleep timer (suspend auto-hide while open)
  *
  * VHS is fully external: this screen only calls vhs.configure / onSurfaceSize / setRewind /
- * effectOrNull. When VHS is disabled in settings the controller is a complete no-op.
+ * effectOrNull, and — on API 23–32 devices where AGSL isn't available — draws a lightweight
+ * Compose scanline overlay driven by vhs.usesLegacyOverlay / scanlinePhase / overlayAlpha, so
+ * the effect isn't AGSL/API-33-exclusive. When VHS is disabled in settings the controller is a
+ * complete no-op either way.
  *
  * FF/FR hold gesture is core and stays here (hold → 2×, drag ramps 3/4/8×, left = reverse).
  */
@@ -277,6 +280,35 @@ fun PhonePlayerScreen(
                         renderEffect = vhs.effectOrNull()?.asComposeRenderEffect()
                     }
             )
+
+            // VHS fallback for API 23–32 (no AGSL/RuntimeShader support): a Compose-drawn
+            // scanline overlay driven by the same controller, so pre-33 devices still get a
+            // VHS visual during FF/FR instead of the effect silently doing nothing.
+            if (vhs.usesLegacyOverlay) {
+                androidx.compose.foundation.Canvas(
+                    surfaceMod
+                        .graphicsLayer {
+                            scaleX = scale; scaleY = scale
+                            translationX = panOffset.x; translationY = panOffset.y
+                        }
+                ) {
+                    val lineSpacingPx = 6.dp.toPx()
+                    val lineHeightPx = 2.dp.toPx()
+                    val offsetPx = vhs.scanlinePhase * lineSpacingPx
+                    val alpha = vhs.overlayAlpha
+                    var y = -lineSpacingPx + offsetPx
+                    while (y < size.height) {
+                        if (y >= -lineHeightPx) {
+                            drawRect(
+                                color = Color.White.copy(alpha = alpha),
+                                topLeft = Offset(0f, y),
+                                size = androidx.compose.ui.geometry.Size(size.width, lineHeightPx)
+                            )
+                        }
+                        y += lineSpacingPx
+                    }
+                }
+            }
         }
 
         // ── Subtitles ───────────────────────────────────────────────────────

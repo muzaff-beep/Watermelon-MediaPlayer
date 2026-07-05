@@ -320,7 +320,7 @@ fun VideoListScreen(
                                     }
                                 },
                                 onLongClick     = { viewModel.onLongPress(item.uri) }
-                            }
+                            )
                         }
                     }
 
@@ -349,7 +349,7 @@ fun VideoListScreen(
                                     }
                                 },
                                 onLongClick     = { viewModel.onLongPress(item.uri) }
-                            }
+                            )
                         }
                     }
                 }

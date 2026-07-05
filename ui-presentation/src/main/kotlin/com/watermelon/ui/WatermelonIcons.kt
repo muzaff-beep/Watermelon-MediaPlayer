@@ -51,6 +51,13 @@ object WatermelonIcons {
     val ViewGrid: ImageVector = Icons.Filled.ViewModule
     val Sort: ImageVector = Icons.Filled.Sort
 
+    // Player specific
+    val ArrowBack: ImageVector = Icons.Filled.ArrowBack
+    val Lock: ImageVector = Icons.Filled.Lock
+    val LockOpen: ImageVector = Icons.Filled.LockOpen
+    val MoreVert: ImageVector = Icons.Filled.MoreVert
+    val MoreHoriz: ImageVector = Icons.Filled.MoreHoriz
+
     // Note: Custom app-themed icons (VHS, sleep timer, PiP, screenshot, badge_new, size_*, sort_asc/desc, orientation, etc.)
     // still require painterResource(R.drawable.ic_*) or custom ImageVector definitions.
     // Next step: migrate remaining or define as vectors.

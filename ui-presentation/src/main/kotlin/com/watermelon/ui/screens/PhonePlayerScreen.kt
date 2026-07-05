@@ -119,7 +119,7 @@ fun PhonePlayerScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     val audioManager = remember { context.getSystemService(AudioManager::class.java) }
-    val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
+    val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager::STREAM_MUSIC) }
     val scope = rememberCoroutineScope()
 
     val position by viewModel.currentPositionMs.collectAsStateWithLifecycle()
@@ -151,7 +151,7 @@ fun PhonePlayerScreen(
     var holdSpeed by remember { mutableFloatStateOf(2f) }
     var seekFrac by remember { mutableFloatStateOf(0f) }
 
-    var currentVolume by remember { mutableIntStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)) }
+    var currentVolume by remember { mutableIntStateOf(audioManager.getStreamVolume(AudioManager::STREAM_MUSIC)) }
     var volumeFraction by remember {
         mutableFloatStateOf(if (maxVolume > 0) currentVolume.toFloat() / maxVolume else 0f)
     }
@@ -299,7 +299,7 @@ fun PhonePlayerScreen(
             Modifier.fillMaxSize()
                 .pointerInput(ui.gesturesEnabled, showControlPanel) {
                     if (!ui.gesturesEnabled || showControlPanel) return@pointerInput
-                    detectTapGestures(
+                    detectTapGestapes(
                         onTap = { lastInteraction = System.nanoTime(); ui.toggleControls(); if (!ui.controlsVisible) showControlPanel = false },
                         onDoubleTap = {
                             viewModel.onIntent(if (isPlaying) UserIntent.Pause else UserIntent.Resume)
@@ -548,9 +548,9 @@ fun PhonePlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (holdIsLeft) Icon(painterResource(R.drawable.ic_rewind), null, tint = PlayerColors.iconDefault, modifier = Modifier.width(24.dp).height(24.dp))
+                if (holdIsLeft) Icon(WatermelonIcons.Rewind, null, tint = PlayerColors.iconDefault, modifier = Modifier.width(24.dp).height(24.dp))
                 Text("${holdSpeed.toInt()}×", color = PlayerColors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                if (!holdIsLeft) Icon(painterResource(R.drawable.ic_fast_forward), null, tint = PlayerColors.iconDefault, modifier = Modifier.width(24.dp).height(24.dp))
+                if (!holdIsLeft) Icon(WatermelonIcons.FastForward, null, tint = PlayerColors.iconDefault, modifier = Modifier.width(24.dp).height(24.dp))
             }
         }
         if (showVolumeIndicator) {

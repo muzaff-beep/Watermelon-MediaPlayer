@@ -69,7 +69,7 @@ class PlaylistRepositoryImpl(
 
         val recentlyAdded = Playlist(
             id              = SystemPlaylist.ID_RECENTLY_ADDED,
-            name            = "Recently Added",
+            name            = "Recently Added · Last 7 Days",
             type            = PlaylistType.RECENTLY_ADDED,
             itemCount       = recentItems.size,
             totalDurationMs = recentItems.sumOf { it.durationMs }

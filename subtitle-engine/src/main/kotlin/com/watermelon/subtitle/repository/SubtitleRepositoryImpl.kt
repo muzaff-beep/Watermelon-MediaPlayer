@@ -62,7 +62,9 @@ class SubtitleRepositoryImpl(
     override suspend fun downloadSubtitle(track: SubtitleTrack): String =
         withContext(Dispatchers.IO) {
             val target = File(cacheDir, fileNameFor(track))
-            downloadClient.get(track.downloadUrl).bodyAsChannel().copyTo(target.outputStream())
+            target.outputStream().use { out ->
+                downloadClient.get(track.downloadUrl).bodyAsChannel().copyTo(out)
+            }
             FileLogger.i("Subtitle", "downloaded: ${target.name}")
             target.absolutePath
         }

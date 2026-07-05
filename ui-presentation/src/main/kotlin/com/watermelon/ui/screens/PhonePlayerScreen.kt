@@ -519,7 +519,7 @@ fun PhonePlayerScreen(
                             }
                             val result = ScreenshotManager.takeScreenshot(context, uri, position, durationMs, mode)
                             screenshotMessage = when (result) {
-                                is ScreenshotResult.Success -> "Saved ${result.files.size} screenshot(s)"
+                                is ScreenshotResult.Success -> "Saved ${result.uris.size} screenshot(s)"
                                 is ScreenshotResult.Error -> "Screenshot failed"
                             }
                         }

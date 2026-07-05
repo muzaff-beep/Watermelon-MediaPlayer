@@ -1,14 +1,23 @@
 package com.watermelon.playback.service
 
 import android.app.PendingIntent
+import android.content.ContentValues
 import android.content.Intent
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.watermelon.common.util.FileLogger
+import java.io.File
+import java.io.FileOutputStream
 
 /**
  * The single source of truth for playback. Owns the ExoPlayer and a MediaSession.
@@ -57,6 +66,7 @@ class WatermelonPlaybackService : MediaSessionService() {
             }
 
         mediaSession = MediaSession.Builder(this, player)
+            .setCallback(MediaSessionCallback(onScreenshot = { captureCurrentFrame(player) }))
             .apply { sessionActivityPendingIntent?.let { setSessionActivity(it) } }
             .build()
 
@@ -65,6 +75,57 @@ class WatermelonPlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
+
+    /**
+     * Grabs the frame at the player's current position and saves it as a PNG, for the
+     * [MediaSessionCallback.CMD_SCREENSHOT] custom command (e.g. external session
+     * controllers). This mirrors the capture technique used by the in-app screenshot
+     * button (frame extraction via [MediaMetadataRetriever]), independently implemented
+     * here since this module has no dependency on the UI layer.
+     *
+     * Returns the saved image's content URI (API 29+) or absolute file path (below API 29)
+     * as a string, or null if nothing could be captured.
+     */
+    private fun captureCurrentFrame(player: Player): String? {
+        val uri = player.currentMediaItem?.localConfiguration?.uri ?: return null
+        val positionMs = player.currentPosition.coerceAtLeast(0L)
+        return runCatching {
+            val retriever = MediaMetadataRetriever()
+            val bitmap = try {
+                retriever.setDataSource(this, uri)
+                retriever.getFrameAtTime(positionMs * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            } finally {
+                retriever.release()
+            } ?: return null
+
+            val filename = "watermelon_${System.currentTimeMillis()}.png"
+            val saved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Watermelon/Screenshots")
+                }
+                val imageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: return null
+                contentResolver.openOutputStream(imageUri)?.use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                } ?: return null
+                imageUri.toString()
+            } else {
+                val dir = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+                    "Watermelon/Screenshots"
+                ).apply { mkdirs() }
+                val file = File(dir, filename)
+                FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) }
+                file.absolutePath
+            }
+            bitmap.recycle()
+            saved
+        }.onFailure {
+            FileLogger.e("Service", "screenshot capture failed", it)
+        }.getOrNull()
+    }
 
     /**
      * When the app task is removed (swiped away), keep the service (and its notification)

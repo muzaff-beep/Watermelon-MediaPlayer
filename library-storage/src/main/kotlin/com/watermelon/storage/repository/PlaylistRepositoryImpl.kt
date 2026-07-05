@@ -52,36 +52,57 @@ class PlaylistRepositoryImpl(
 
     override fun observeAll(): Flow<List<Playlist>> = combine(
         mediaRepository.observeAllMedia(),
-        observeUserPlaylists(),
+        observeUserPlaylistRows(),
         folderVisibilityStore.visibilityVersion
-    ) { allMediaUnfiltered, userPlaylists, _ ->
+    ) { allMediaUnfiltered, userPlaylistRows, _ ->
         val allMedia = visibleMedia(allMediaUnfiltered)
         val now = System.currentTimeMillis()
-        val recentCount = allMedia.count {
+        val recentItems = allMedia.filter {
             val ts = if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt
             ts >= now - sevenDaysMs
         }
-        val favCount = getFavouriteCount(allMedia)
-        val continueWatchingCount = getContinueWatchingCount(allMedia)
+        val favUris = getFavouriteUris()
+        val favItems = allMedia.filter { it.uri in favUris }
+        val positionsByKey = getContinueWatchingPositions()
+        val continueWatchingItems =
+            allMedia.filter { positionsByKey.containsKey(it.uri to it.fileSize) }
 
         val recentlyAdded = Playlist(
-            id        = SystemPlaylist.ID_RECENTLY_ADDED,
-            name      = "Recently Added",
-            type      = PlaylistType.RECENTLY_ADDED,
-            itemCount = recentCount
+            id              = SystemPlaylist.ID_RECENTLY_ADDED,
+            name            = "Recently Added",
+            type            = PlaylistType.RECENTLY_ADDED,
+            itemCount       = recentItems.size,
+            totalDurationMs = recentItems.sumOf { it.durationMs }
         )
         val favourites = Playlist(
-            id        = SystemPlaylist.ID_FAVOURITES,
-            name      = "Favourites",
-            type      = PlaylistType.FAVOURITES,
-            itemCount = favCount
+            id              = SystemPlaylist.ID_FAVOURITES,
+            name            = "Favourites",
+            type            = PlaylistType.FAVOURITES,
+            itemCount       = favItems.size,
+            totalDurationMs = favItems.sumOf { it.durationMs }
         )
         val continueWatching = Playlist(
-            id        = SystemPlaylist.ID_CONTINUE_WATCHING,
-            name      = "Continue Watching",
-            type      = PlaylistType.CONTINUE_WATCHING,
-            itemCount = continueWatchingCount
+            id              = SystemPlaylist.ID_CONTINUE_WATCHING,
+            name            = "Continue Watching",
+            type            = PlaylistType.CONTINUE_WATCHING,
+            itemCount       = continueWatchingItems.size,
+            totalDurationMs = continueWatchingItems.sumOf { it.durationMs }
         )
+        // itemCount/totalDurationMs derived from the same visibility-filtered allMedia list as
+        // the system playlists above, rather than a raw COUNT(*) against PlaylistItems — so a
+        // user playlist containing a since-deleted file or a file in a now-hidden folder no
+        // longer inflates its displayed count.
+        val userPlaylists = userPlaylistRows.map { row ->
+            val items = allMedia.filter { it.uri in row.uris }
+            Playlist(
+                id              = row.id,
+                name            = row.name,
+                type            = PlaylistType.USER,
+                itemCount       = items.size,
+                totalDurationMs = items.sumOf { it.durationMs },
+                createdAt       = row.createdAt
+            )
+        }
         listOf(continueWatching, recentlyAdded, favourites) + userPlaylists
     }.flowOn(Dispatchers.IO)
 
@@ -264,8 +285,16 @@ class PlaylistRepositoryImpl(
             Unit
         }
 
-    private fun observeUserPlaylists(): Flow<List<Playlist>> = flow {
-        val playlists = mutableListOf<Playlist>()
+    /** Raw user playlist row before item-count/duration are resolved against visible media. */
+    private data class UserPlaylistRow(
+        val id: String,
+        val name: String,
+        val createdAt: Long,
+        val uris: Set<String>
+    )
+
+    private fun observeUserPlaylistRows(): Flow<List<UserPlaylistRow>> = flow {
+        val rows = mutableListOf<UserPlaylistRow>()
         runCatching {
             db.readableDatabase.rawQuery(
                 "SELECT id, name, createdAt FROM Playlists WHERE type = ? ORDER BY createdAt ASC",
@@ -273,35 +302,17 @@ class PlaylistRepositoryImpl(
             ).use { cursor ->
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(0)
-                    val count = runCatching {
-                        db.readableDatabase.rawQuery(
-                            "SELECT COUNT(*) FROM PlaylistItems WHERE playlistId = ?", arrayOf(id)
-                        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
-                    }.getOrDefault(0)
-                    playlists += Playlist(
+                    rows += UserPlaylistRow(
                         id        = id,
                         name      = cursor.getString(1),
-                        type      = PlaylistType.USER,
-                        itemCount = count,
-                        createdAt = cursor.getLong(2)
+                        createdAt = cursor.getLong(2),
+                        uris      = getPlaylistItemUris(id).toSet()
                     )
                 }
             }
         }
-        emit(playlists)
+        emit(rows)
     }.flowOn(Dispatchers.IO)
-
-    /** Counts favourites that are also currently visible (not in a hidden folder). */
-    private fun getFavouriteCount(visibleMedia: List<MediaItem>): Int {
-        val favUris = getFavouriteUris()
-        return visibleMedia.count { it.uri in favUris }
-    }
-
-    /** Counts in-progress videos that are also currently visible (not in a hidden folder). */
-    private fun getContinueWatchingCount(visibleMedia: List<MediaItem>): Int {
-        val positionsByKey = getContinueWatchingPositions()
-        return visibleMedia.count { positionsByKey.containsKey(it.uri to it.fileSize) }
-    }
 
     /**
      * Maps (uri, fileSize) -> updatedAt for every saved in-progress position, most recent

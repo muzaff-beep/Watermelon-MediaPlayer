@@ -23,6 +23,19 @@ import java.nio.charset.Charset
 class LocalSidecarSourceImpl(private val context: Context) {
 
     /**
+     * Memoizes [resolveFolder] results by the raw `parentFolder` string (including a cached
+     * `null` for "not found"). Without this, every video's subtitle lookup that couldn't be
+     * resolved via a direct path join fell through to [findDirNamed] — a recursive scan of
+     * the entire external storage tree (depth 4) — and browsing a folder with many videos
+     * repeated that full scan once per video. `Collections.synchronizedMap` (rather than
+     * `ConcurrentHashMap`) is used because it allows null values, needed to cache negative
+     * results. A benign race (two lookups miss the cache at once and both scan) is possible
+     * but harmless — it only costs one duplicate scan, never an incorrect result.
+     */
+    private val resolvedFolderCache: MutableMap<String, File?> =
+        java.util.Collections.synchronizedMap(mutableMapOf())
+
+    /**
      * Find and return the best-matching parsed subtitle for [query], or null if none found.
      * Tries candidates in language-preference order.
      */
@@ -78,6 +91,13 @@ class LocalSidecarSourceImpl(private val context: Context) {
     }
 
     private fun resolveFolder(parentFolder: String): File? {
+        if (resolvedFolderCache.containsKey(parentFolder)) return resolvedFolderCache[parentFolder]
+        val resolved = resolveFolderUncached(parentFolder)
+        resolvedFolderCache[parentFolder] = resolved
+        return resolved
+    }
+
+    private fun resolveFolderUncached(parentFolder: String): File? {
         File(parentFolder).let { if (it.isAbsolute && it.isDirectory) return it }
         val roots = listOfNotNull(
             Environment.getExternalStorageDirectory(),

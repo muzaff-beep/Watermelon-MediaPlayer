@@ -141,5 +141,14 @@ class SubtitleRepositoryImpl(
     private fun fileNameFor(track: SubtitleTrack): String =
         "${safeKey(track.label)}.${track.language}.srt"
 
-    private fun safeKey(raw: String): String = raw.hashCode().toUInt().toString(16)
+    /**
+     * Derives a filesystem-safe cache key from [raw] (a content:// URI or similar). Uses
+     * SHA-256 rather than [String.hashCode] — hashCode is only 32 bits, so two different
+     * video URIs could collide and one video would silently serve another's cached
+     * subtitle. SHA-256's collision probability is negligible for this purpose.
+     */
+    private fun safeKey(raw: String): String =
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(raw.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
 }

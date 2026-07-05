@@ -280,6 +280,13 @@ class PlaybackControllerImpl(
      * *before* cancelling [scope] — otherwise scope.cancel() would abort the fire-and-forget
      * coroutine from [saveSavedPositionAsync] before its SQLite write completes, silently
      * dropping the last few seconds of resume progress on every teardown.
+     *
+     * This runs on whatever thread calls release() — typically the main thread, from
+     * Activity#onStop() — so the wait is bounded by [RELEASE_SAVE_TIMEOUT_MS] rather than
+     * left open-ended: a slow disk (or a wedged write) blocks the UI thread for at most that
+     * long instead of risking an ANR. If it times out, the last few seconds of resume
+     * progress may be lost, which is the same failure mode as before this fix — just with a
+     * guaranteed upper bound instead of none.
      */
     fun release() {
         val repo = positionRepository
@@ -288,7 +295,20 @@ class PlaybackControllerImpl(
             val positionMs = player.currentPosition
             val fileSize = currentFileSizeForPosition
             runCatching {
-                kotlinx.coroutines.runBlocking { repo.savePosition(uri, fileSize, positionMs) }
+                kotlinx.coroutines.runBlocking {
+                    val saved = kotlinx.coroutines.withTimeoutOrNull(RELEASE_SAVE_TIMEOUT_MS) {
+                        // Dispatchers.IO so the actual disk write isn't pinned to the caller's
+                        // thread while we wait on it.
+                        kotlinx.coroutines.withContext(Dispatchers.IO) {
+                            repo.savePosition(uri, fileSize, positionMs)
+                        }
+                        true
+                    }
+                    if (saved == null) {
+                        com.watermelon.common.util.FileLogger.w("Playback",
+                            "release() — position save timed out after ${RELEASE_SAVE_TIMEOUT_MS}ms, may lose last few seconds")
+                    }
+                }
             }
         }
         positionJob?.cancel()
@@ -341,5 +361,6 @@ class PlaybackControllerImpl(
         const val MAX_SPEED        = 8.0f
         private const val POSITION_TICK_MS = 250L
         private const val SAVE_EVERY_N_TICKS = 20  // ~5s at 250ms/tick
+        private const val RELEASE_SAVE_TIMEOUT_MS = 300L
     }
 }

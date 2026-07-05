@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ (API 31+) backup/transfer rules.
+
+    Excludes:
+      - watermelon.db: SQLite database full of content:// URIs, file paths, and playback
+        state tied to *this* device's media store. Restoring it onto another device (or
+        after a factory reset) leaves the app pointing at files that may not exist there.
+      - screenshots/: user-generated files in app-private storage; not metadata worth
+        silently restoring onto a new device.
+      - watermelon_prefs: small UI prefs (volume/brightness/VHS settings) — harmless to
+        lose, not worth carrying over via a wildcard backup as a matter of policy.
+
+    "cloudBackup" governs Android's Auto Backup (Google account / Drive).
+    "device-to-device transfer"" governs the newer local transfer flow (e.g. Android's
+    "Copy your data" during device setup, and Google's D2D via cable/wifi).
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="watermelon.db" />
+        <exclude domain="file" path="screenshots/" />
+        <exclude domain="sharedpref" path="watermelon_prefs.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" path="watermelon.db" />
+        <exclude domain="file" path="screenshots/" />
+        <exclude domain="sharedpref" path="watermelon_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>

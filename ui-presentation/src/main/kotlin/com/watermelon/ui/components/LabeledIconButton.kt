@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -25,14 +26,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
  * action bars, list controls and settings so every icon is identifiable (Issue 11).
  * NOT used in the player control panel (which intentionally has no labels).
  *
- * @param iconRes drawable resource
+ * @param icon drawable resource (Int) or ImageVector from WatermelonIcons
  * @param label visible caption shown under the icon
  * @param onClick tap handler
  * @param active when true, icon + label use the primary/active color
  */
 @Composable
 fun LabeledIconButton(
-    iconRes: Int,
+    icon: Any,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -48,12 +49,25 @@ fun LabeledIconButton(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Icon(
-            painter            = painterResource(iconRes),
-            contentDescription = label,
-            tint               = resolvedTint,
-            modifier           = Modifier.size(24.dp)
-        )
+        when (icon) {
+            is ImageVector -> {
+                Icon(
+                    imageVector       = icon,
+                    contentDescription = label,
+                    tint               = resolvedTint,
+                    modifier           = Modifier.size(24.dp)
+                )
+            }
+            is Int -> {
+                Icon(
+                    painter            = painterResource(icon),
+                    contentDescription = label,
+                    tint               = resolvedTint,
+                    modifier           = Modifier.size(24.dp)
+                )
+            }
+            else -> {}
+        }
         Text(
             text      = label,
             color     = resolvedTint,

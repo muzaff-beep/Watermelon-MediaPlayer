@@ -103,8 +103,7 @@ class VhsEffectController(
 
     // ── Tier C: PNG-overlay fallback (API 23–32, no AGSL) ──────────────────────────────────
     // Lightweight, dependency-free scanline animation so devices below API 33 still get a
-    // VHS visual during FF/FR instead of nothing. Mirrors the timing used by
-    // com.watermelon.playback.vhs.PNGLegacyOverlayRenderer.
+    // VHS visual during FF/FR instead of nothing.
     private val legacyScrollPeriodSec = 0.08f
 
     /** Scanline scroll phase, 0..1, looping — drives the overlay drawable's vertical offset. */

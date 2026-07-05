@@ -108,7 +108,7 @@ class SubtitleApiClient(
             val root = runCatching { Json.parseToJsonElement(body) }.getOrNull() ?: return emptyList()
             val entries: List<JsonObject> = when {
                 root is JsonObject && root["data"] is JsonArray ->
-                    root.jsonObject["data"]!!.jsonArray.mapNotNull { it as? JsonObject }
+                    (root.jsonObject["data"] as? JsonArray)?.mapNotNull { it as? JsonObject }.orEmpty()
                 root is JsonArray -> root.mapNotNull { it as? JsonObject }
                 else -> emptyList()
             }

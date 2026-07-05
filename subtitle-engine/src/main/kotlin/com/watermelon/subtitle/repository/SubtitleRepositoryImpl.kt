@@ -7,6 +7,7 @@ import com.watermelon.common.model.SubtitleTrack
 import com.watermelon.common.model.VideoQuery
 import com.watermelon.common.repository.SubtitleRepository
 import com.watermelon.common.util.FileLogger
+import com.watermelon.subtitle.hash.OpenSubtitlesHasher
 import com.watermelon.subtitle.network.SubtitleApiClient
 import com.watermelon.subtitle.source.LocalSidecarSourceImpl
 import io.ktor.client.HttpClient
@@ -160,8 +161,21 @@ class SubtitleRepositoryImpl(
         }
     }
 
-    private fun hashFor(mediaItem: MediaItem): String =
-        safeKey(mediaItem.uri) + mediaItem.fileSize.toString(16)
+    /**
+     * Computes the real OpenSubtitles file hash (Manifest §6.1) for [mediaItem] so remote
+     * lookups actually match the provider's index. Requires random access to the file's raw
+     * bytes (first/last 64 KB), so for `content://` URIs we open a file descriptor via the
+     * ContentResolver rather than hashing a synthetic local key. Throws if the descriptor
+     * can't be opened or the file is too small to hash — callers already wrap this call in
+     * `runCatching` and fall back to an empty result.
+     */
+    private fun hashFor(mediaItem: MediaItem): String {
+        val uri = android.net.Uri.parse(mediaItem.uri)
+        context.contentResolver.openFileDescriptor(uri, "r").use { pfd ->
+            requireNotNull(pfd) { "Unable to open file descriptor for ${mediaItem.uri}" }
+            return OpenSubtitlesHasher.hash(pfd.fileDescriptor, mediaItem.fileSize)
+        }
+    }
 
     private fun fileNameFor(track: SubtitleTrack): String =
         "${safeKey(track.label)}.${track.language}.srt"

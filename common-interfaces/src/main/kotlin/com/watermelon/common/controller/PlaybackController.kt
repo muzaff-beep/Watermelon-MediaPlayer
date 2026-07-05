@@ -16,7 +16,7 @@ interface PlaybackController {
     fun pause()
     fun resume()
     fun seekTo(positionMs: Long)
-    fun setSpeed(speed: Float)                   // 0.5f .. 2.0f
+    fun setSpeed(speed: Float)                   // 0.5f .. 8.0f
     fun setRepeat(mode: RepeatMode)
     fun setShuffle(enabled: Boolean)
     fun setSleepTimer(mode: SleepTimerMode)

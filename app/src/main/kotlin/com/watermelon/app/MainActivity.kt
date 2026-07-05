@@ -483,6 +483,15 @@ class MainActivity : ComponentActivity() {
                 } else {
                     val vm = remember(pbController) { PlayerViewModel(pbController) }
                     LaunchedEffect(mediaUri) { vm.onIntent(UserIntent.Play(mediaUri)) }
+
+                    // Favourite status for the star icon in the control panel — refreshed
+                    // whenever the current video changes, and updated optimistically on tap
+                    // so the icon responds immediately rather than waiting on the DB write.
+                    var isFavourite by remember(mediaUri) { mutableStateOf(false) }
+                    LaunchedEffect(mediaUri) {
+                        isFavourite = runCatching { playlistRepository.isFavourite(mediaUri) }.getOrDefault(false)
+                    }
+
                     val vhsController = com.watermelon.ui.player.rememberVhsEffectController(
                         shaderProvider = { intensity, timeSec, w, h ->
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -561,8 +570,16 @@ class MainActivity : ComponentActivity() {
                             }
                             startActivity(android.content.Intent.createChooser(sendIntent, "Share video"))
                         },
-                        onFavourite = {
-                            lifecycleScope.launch { playlistRepository.addToFavourites(mediaUri) }
+                        isFavourite = isFavourite,
+                        onFavourite = { wantFavourite ->
+                            isFavourite = wantFavourite  // optimistic; reconciled below if the write fails
+                            lifecycleScope.launch {
+                                val ok = runCatching {
+                                    if (wantFavourite) playlistRepository.addToFavourites(mediaUri)
+                                    else playlistRepository.removeFromFavourites(mediaUri)
+                                }.isSuccess
+                                if (!ok) isFavourite = !wantFavourite  // revert on failure
+                            }
                         },
                         onAddToPlaylist = {
                             // For now add to favourites as the default playlist target; a playlist

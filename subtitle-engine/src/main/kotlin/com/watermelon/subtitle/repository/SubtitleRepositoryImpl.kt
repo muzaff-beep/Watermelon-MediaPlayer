@@ -59,8 +59,33 @@ class SubtitleRepositoryImpl(
         apiClient.query(hash, mediaItem.fileSize, preferredLanguages)
     }
 
+    /**
+     * Allowed hosts for subtitle downloads — the same providers [MirrorRotator.DEFAULT]
+     * queries. The *search* request only ever goes to these hosts, but the JSON response
+     * body's `downloadUrl` field is attacker-influenced: it's returned by whichever mirror
+     * answered, and nothing before this point constrains it to point back at that same
+     * provider. Without this check, a compromised or malicious mirror (or a spoofed
+     * response) could redirect [downloadSubtitle] at an arbitrary internal address (cloud
+     * metadata endpoints, localhost services, etc.) and this app would fetch it and write
+     * the response straight to disk. Requiring https + a known host closes that gap.
+     */
+    private val allowedDownloadHosts = setOf(
+        "opensubtitles.com", "api.opensubtitles.com",
+        "opensubtitles.org", "rest.opensubtitles.org", "www.opensubtitles.org"
+    )
+
+    private fun isAllowedDownloadUrl(url: String): Boolean {
+        val parsed = runCatching { java.net.URI(url) }.getOrNull() ?: return false
+        val host = parsed.host?.lowercase() ?: return false
+        return parsed.scheme.equals("https", ignoreCase = true) &&
+            allowedDownloadHosts.any { host == it || host.endsWith(".$it") }
+    }
+
     override suspend fun downloadSubtitle(track: SubtitleTrack): String =
         withContext(Dispatchers.IO) {
+            require(isAllowedDownloadUrl(track.downloadUrl)) {
+                "Refusing to download subtitle from untrusted URL: ${track.downloadUrl}"
+            }
             val target = File(cacheDir, fileNameFor(track))
             target.outputStream().use { out ->
                 downloadClient.get(track.downloadUrl).bodyAsChannel().copyTo(out)

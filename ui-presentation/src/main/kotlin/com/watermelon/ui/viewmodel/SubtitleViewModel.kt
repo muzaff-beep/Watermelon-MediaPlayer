@@ -24,6 +24,9 @@ class SubtitleViewModel(
     private val _downloadedPath = MutableStateFlow<String?>(null)
     val downloadedPath: StateFlow<String?> = _downloadedPath.asStateFlow()
 
+    private val _downloadError = MutableStateFlow<String?>(null)
+    val downloadError: StateFlow<String?> = _downloadError.asStateFlow()
+
     /** Render-time sync offset in ms (persisted in SubtitleOffsets by the storage layer). */
     private val _offsetMs = MutableStateFlow(0L)
     val offsetMs: StateFlow<Long> = _offsetMs.asStateFlow()
@@ -36,7 +39,13 @@ class SubtitleViewModel(
 
     fun download(track: SubtitleTrack) {
         viewModelScope.launch {
-            _downloadedPath.value = subtitleRepository.downloadSubtitle(track)
+            _downloadError.value = null
+            runCatching { subtitleRepository.downloadSubtitle(track) }
+                .onSuccess { _downloadedPath.value = it }
+                .onFailure { e ->
+                    com.watermelon.common.util.FileLogger.e("Subtitle", "download failed", e)
+                    _downloadError.value = "Couldn't download this subtitle. Please try another."
+                }
         }
     }
 

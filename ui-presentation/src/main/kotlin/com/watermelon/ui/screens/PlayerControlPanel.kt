@@ -38,6 +38,7 @@ fun ControlPanel(
     isShuffled: Boolean,
     isPiP: Boolean,
     isBackground: Boolean,
+    isFavourite: Boolean,
     onSpeedChange: (Float) -> Unit,
     onMuteToggle: () -> Unit,
     onRatioChange: (VideoRatio) -> Unit,
@@ -106,7 +107,12 @@ fun ControlPanel(
         PanelLabel("File")
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
             IconStub(WatermelonIcons.Share, "Share", false, onShare)
-            IconStub(WatermelonIcons.Favorite, "Add to favourites", false, onFavourite)
+            IconStub(
+                icon        = if (isFavourite) WatermelonIcons.Favorite else WatermelonIcons.FavoriteBorder,
+                description = if (isFavourite) "Remove from favourites" else "Add to favourites",
+                active      = isFavourite,
+                onClick     = onFavourite
+            )
             IconStub(WatermelonIcons.PlaylistAdd, "Add to playlist", false, onAddToPlaylist)
             IconStub(WatermelonIcons.Delete, "Delete", false, onDelete)
         }

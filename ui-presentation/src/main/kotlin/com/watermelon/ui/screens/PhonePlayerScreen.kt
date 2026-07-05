@@ -109,7 +109,8 @@ fun PhonePlayerScreen(
     onBrightnessChange: ((Float) -> Unit)? = null,
     onSkipToTrack: ((String) -> Unit)? = null,
     onShare: (() -> Unit)? = null,
-    onFavourite: (() -> Unit)? = null,
+    isFavourite: Boolean = false,
+    onFavourite: ((Boolean) -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     onLockChanged: ((Boolean) -> Unit)? = null,
@@ -498,6 +499,7 @@ fun PhonePlayerScreen(
                     isShuffled = isShuffled,
                     isPiP = isPiPEnabled,
                     isBackground = isBackgroundEnabled,
+                    isFavourite = isFavourite,
                     onSpeedChange = { s -> playbackSpeed = s; viewModel.onIntent(UserIntent.SetSpeed(s)) },
                     onMuteToggle = {
                         val muted = currentVolume == 0
@@ -531,7 +533,7 @@ fun PhonePlayerScreen(
                     },
                     onPlaylist = { },
                     onShare = { onShare?.invoke() },
-                    onFavourite = { onFavourite?.invoke() },
+                    onFavourite = { onFavourite?.invoke(!isFavourite) },
                     onAddToPlaylist = { onAddToPlaylist?.invoke() },
                     onDelete = { onDelete?.invoke() }
                 )

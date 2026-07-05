@@ -174,7 +174,7 @@ fun VideoListScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
             }
-        }
+        )
     }
 
     // Playlist picker dialog
@@ -200,14 +200,14 @@ fun VideoListScreen(
                             "No playlists yet. Create one in the folder browser.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        )
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showPlaylistPicker = false }) { Text("Cancel") }
             }
-        }
+        )
     }
 
     Scaffold(
@@ -464,6 +464,8 @@ private fun VideoListItem(
     }
 }
 
-private fun formatDuration(ms: Long): String =
-    if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+private fun formatDuration(ms: Long): String {
+    val s = (ms / 1000).coerceAtLeast(0)
+    val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }

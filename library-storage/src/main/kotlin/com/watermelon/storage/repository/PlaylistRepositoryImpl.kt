@@ -22,11 +22,15 @@ import java.util.UUID
  * Playlist repository backed by SQLite.
  *
  * Tables used:
- *   Playlists        (id TEXT PK, name TEXT, type TEXT, createdAt INTEGER)
- *   PlaylistItems    (playlistId TEXT, uri TEXT, addedAt INTEGER)
- *   Favourites       (uri TEXT PK, addedAt INTEGER)
+ *   Playlists          (id TEXT PK, name TEXT, type TEXT, createdAt INTEGER)
+ *   PlaylistItems      (playlistId TEXT, uri TEXT, addedAt INTEGER)
+ *   Favourites         (uri TEXT PK, addedAt INTEGER)
+ *   PlaybackPositions  (mediaId TEXT, fileSize INTEGER, positionMs INTEGER, updatedAt INTEGER)
  *
  * Recently Added is computed dynamically from MediaItems.firstSeenAt (last 7 days).
+ * Continue Watching is computed dynamically from PlaybackPositions — any video with a
+ * saved resume position (written by PlaybackControllerImpl during playback) shows up here,
+ * most-recently-watched first, until it either finishes (position cleared) or is removed.
  * These tables are created via MigrationV7ToV8 if not already present.
  */
 class PlaylistRepositoryImpl(
@@ -43,6 +47,7 @@ class PlaylistRepositoryImpl(
         val now = System.currentTimeMillis()
         val recentCount = allMedia.count { it.firstSeenAt >= now - sevenDaysMs }
         val favCount = getFavouriteCount()
+        val continueWatchingCount = getContinueWatchingCount()
 
         val recentlyAdded = Playlist(
             id        = SystemPlaylist.ID_RECENTLY_ADDED,
@@ -56,7 +61,13 @@ class PlaylistRepositoryImpl(
             type      = PlaylistType.FAVOURITES,
             itemCount = favCount
         )
-        listOf(recentlyAdded, favourites) + userPlaylists
+        val continueWatching = Playlist(
+            id        = SystemPlaylist.ID_CONTINUE_WATCHING,
+            name      = "Continue Watching",
+            type      = PlaylistType.CONTINUE_WATCHING,
+            itemCount = continueWatchingCount
+        )
+        listOf(continueWatching, recentlyAdded, favourites) + userPlaylists
     }.flowOn(Dispatchers.IO)
 
     override fun observeVideos(playlistId: String): Flow<List<MediaItem>> =
@@ -82,6 +93,19 @@ class PlaylistRepositoryImpl(
                     com.watermelon.common.util.FileLogger.i("Playlist",
                         "Favourites — favUris=${favUris.size}, matched videos=${inFav.size}")
                     applyCustomOrder(playlistId, inFav)
+                }
+                SystemPlaylist.ID_CONTINUE_WATCHING -> {
+                    // Keyed by (uri, fileSize) — same stable identity used for MediaItem and
+                    // SubtitleOffsets — so a replaced file at the same path doesn't wrongly
+                    // inherit a stale resume position.
+                    val positionsByKey = getContinueWatchingPositions()
+                    val inProgress = all
+                        .filter { positionsByKey.containsKey(it.uri to it.fileSize) }
+                        .sortedByDescending { positionsByKey.getValue(it.uri to it.fileSize) }
+                    com.watermelon.common.util.FileLogger.i("Playlist",
+                        "ContinueWatching — ${positionsByKey.size} saved position(s), " +
+                        "${inProgress.size} matched to current library")
+                    inProgress
                 }
                 else -> {
                     val uris = getPlaylistItemUris(playlistId)
@@ -252,6 +276,36 @@ class PlaylistRepositoryImpl(
         db.readableDatabase.rawQuery("SELECT COUNT(*) FROM Favourites", null)
             .use { if (it.moveToFirst()) it.getInt(0) else 0 }
     }.getOrDefault(0)
+
+    private fun getContinueWatchingCount(): Int = runCatching {
+        // positionMs > 0 excludes any row that was written with a zero/cleared position.
+        db.readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM PlaybackPositions WHERE positionMs > 0", null
+        ).use { if (it.moveToFirst()) it.getInt(0) else 0 }
+    }.getOrDefault(0)
+
+    /**
+     * Maps (uri, fileSize) -> updatedAt for every saved in-progress position, most recent
+     * first is applied by the caller via sortedByDescending. positionMs = 0 rows (cleared,
+     * e.g. on natural end-of-video) are excluded — they shouldn't appear as "in progress".
+     */
+    private fun getContinueWatchingPositions(): Map<Pair<String, Long>, Long> {
+        val map = mutableMapOf<Pair<String, Long>, Long>()
+        runCatching {
+            db.readableDatabase.rawQuery(
+                "SELECT mediaId, fileSize, updatedAt FROM PlaybackPositions WHERE positionMs > 0",
+                null
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    val uri      = cursor.getString(0)
+                    val fileSize = cursor.getLong(1)
+                    val updated  = cursor.getLong(2)
+                    map[uri to fileSize] = updated
+                }
+            }
+        }
+        return map
+    }
 
     private fun getFavouriteUris(): Set<String> {
         val uris = mutableSetOf<String>()

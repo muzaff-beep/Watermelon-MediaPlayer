@@ -5,7 +5,7 @@ import com.watermelon.common.model.Playlist
 import kotlinx.coroutines.flow.Flow
 
 interface PlaylistRepository {
-    /** All playlists in display order: Recently Added, Favourites, then user playlists. */
+    /** All playlists in display order: Continue Watching, Recently Added, Favourites, then user playlists. */
     fun observeAll(): Flow<List<Playlist>>
 
     /** Videos inside a specific playlist. */

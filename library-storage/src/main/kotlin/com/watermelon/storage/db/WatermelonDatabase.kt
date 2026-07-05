@@ -73,6 +73,13 @@ class WatermelonDatabase(context: Context) : SQLiteOpenHelper(
             );
             """.trimIndent()
         )
+        // NOTE: `Folders` is legacy/unused — the folder tree and per-folder item counts shown
+        // in the UI are computed live by Phase1Sweep/FolderRepositoryImpl from MediaStore, and
+        // "Recently Added"/other playlist counts come from MediaItems via PlaylistRepositoryImpl.
+        // Nothing reads or writes this table. It's kept in the v1 baseline (rather than dropped)
+        // because the schema/migration ladder is frozen and version-gated (Manifest §10.1) —
+        // dropping a table that already exists in every installed database would need its own
+        // migration step for no real benefit, since an empty, untouched table costs nothing.
         db.execSQL(
             """
             CREATE TABLE IF NOT EXISTS Folders (

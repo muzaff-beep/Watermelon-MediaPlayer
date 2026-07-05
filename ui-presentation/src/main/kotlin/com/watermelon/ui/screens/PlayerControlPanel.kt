@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.watermelon.common.model.RepeatMode
 import com.watermelon.ui.R
+import com.watermelon.ui.WatermelonIcons
 import com.watermelon.ui.theme.PlayerColors
 
 private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
@@ -87,27 +88,27 @@ fun ControlPanel(
         }
         HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconStub(R.drawable.ic_volume_mute, "Mute", isMuted, onMuteToggle)
+            IconStub(WatermelonIcons.VolumeMute, "Mute", isMuted, onMuteToggle)  // replaced
             val repeatIcon = when (repeatMode) {
-                RepeatMode.NONE -> R.drawable.ic_repeat_off
-                RepeatMode.ONE -> R.drawable.ic_repeat_one
-                RepeatMode.ALL -> R.drawable.ic_repeat_all
+                RepeatMode.NONE -> WatermelonIcons.RepeatOff
+                RepeatMode.ONE -> WatermelonIcons.RepeatOne
+                RepeatMode.ALL -> WatermelonIcons.RepeatAll
             }
             IconStub(repeatIcon, "Repeat", repeatMode != RepeatMode.NONE, onRepeat)
-            IconStub(if (isShuffled) R.drawable.ic_shuffle_on else R.drawable.ic_shuffle_off, "Shuffle", isShuffled, onShuffle)
-            IconStub(R.drawable.ic_screenshot_single, "Screenshot", false, onScreenshot)
-            IconStub(R.drawable.ic_sleep_timer, "Sleep timer", false, onSleepTimer)
-            IconStub(R.drawable.ic_pip, "PiP", isPiP, onPip)
-            IconStub(R.drawable.ic_background_play, "Background play", isBackground, onBackground)
-            IconStub(R.drawable.ic_playlist_add, "Playlist", false, onPlaylist)
+            IconStub(if (isShuffled) WatermelonIcons.ShuffleOn else WatermelonIcons.ShuffleOff, "Shuffle", isShuffled, onShuffle)
+            IconStub(R.drawable.ic_screenshot_single, "Screenshot", false, onScreenshot)  // custom keep
+            IconStub(R.drawable.ic_sleep_timer, "Sleep timer", false, onSleepTimer)  // custom keep
+            IconStub(R.drawable.ic_pip, "PiP", isPiP, onPip)  // custom keep
+            IconStub(R.drawable.ic_background_play, "Background play", isBackground, onBackground)  // custom keep
+            IconStub(WatermelonIcons.PlaylistAdd, "Playlist", false, onPlaylist)  // replaced
         }
         HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
         PanelLabel("File")
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconStub(R.drawable.ic_share, "Share", false, onShare)
-            IconStub(R.drawable.ic_favorite, "Add to favourites", false, onFavourite)
-            IconStub(R.drawable.ic_playlist_add, "Add to playlist", false, onAddToPlaylist)
-            IconStub(R.drawable.ic_delete, "Delete", false, onDelete)
+            IconStub(WatermelonIcons.Share, "Share", false, onShare)
+            IconStub(WatermelonIcons.Favorite, "Add to favourites", false, onFavourite)
+            IconStub(WatermelonIcons.PlaylistAdd, "Add to playlist", false, onAddToPlaylist)
+            IconStub(WatermelonIcons.Delete, "Delete", false, onDelete)
         }
     }
 }
@@ -118,11 +119,21 @@ private fun PanelLabel(text: String) {
 }
 
 @Composable
-private fun IconStub(iconRes: Int, description: String, active: Boolean, onClick: () -> Unit) {
+private fun IconStub(icon: Any, description: String, active: Boolean, onClick: () -> Unit) {  // updated to accept ImageVector or Int
     IconButton(onClick = onClick) {
-        Icon(painterResource(iconRes), description,
-            tint = if (active) PlayerColors.iconActive else PlayerColors.iconDefault,
-            modifier = Modifier.width(22.dp).height(22.dp))
+        when (icon) {
+            is androidx.compose.ui.graphics.vector.ImageVector -> {
+                Icon(icon, description,
+                    tint = if (active) PlayerColors.iconActive else PlayerColors.iconDefault,
+                    modifier = Modifier.width(22.dp).height(22.dp))
+            }
+            is Int -> {
+                Icon(painterResource(icon), description,
+                    tint = if (active) PlayerColors.iconActive else PlayerColors.iconDefault,
+                    modifier = Modifier.width(22.dp).height(22.dp))
+            }
+            else -> {}
+        }
     }
 }
 

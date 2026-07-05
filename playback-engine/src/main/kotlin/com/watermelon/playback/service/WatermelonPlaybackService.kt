@@ -67,16 +67,20 @@ class WatermelonPlaybackService : MediaSessionService() {
         mediaSession
 
     /**
-     * When the app task is removed (swiped away), stop playback + service if not playing,
-     * so we don't leave a dangling notification. If still playing in background, keep alive.
+     * When the app task is removed (swiped away), keep the service (and its notification)
+     * alive as long as a media item is loaded — whether playing or paused — so the user can
+     * resume from the notification or by reopening the app. Only stop the service if nothing
+     * is loaded at all, since a session with no media is a dangling notification with nothing
+     * to show.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = mediaSession?.player
-        if (player == null || !player.playWhenReady || player.mediaItemCount == 0) {
-            FileLogger.i("Service", "onTaskRemoved — not playing, stopping service")
+        if (player == null || player.mediaItemCount == 0) {
+            FileLogger.i("Service", "onTaskRemoved — nothing loaded, stopping service")
             stopSelf()
         } else {
-            FileLogger.i("Service", "onTaskRemoved — still playing, keeping service alive")
+            FileLogger.i("Service",
+                "onTaskRemoved — media loaded (playWhenReady=${player.playWhenReady}), keeping service alive")
         }
         super.onTaskRemoved(rootIntent)
     }

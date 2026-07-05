@@ -169,11 +169,11 @@ fun PhonePlayerScreen(
     var currentBrightness by remember { mutableFloatStateOf(startBrightness) }
     var showBrightnessIndicator by remember { mutableStateOf(false) }
 
-    // ─ـ VHS: configure + animate (no-op when disabled) ─────────────────────
+    // ── VHS: configure + animate (no-op when disabled) ─────────────────────
     vhs.configure(vhsEnabled, vhsIntensity)
     vhs.DriveAnimation()
 
-    // ─ـ Auto-hide: a single timer reset by any interaction. Stays 5s minimum, and never
+    // ── Auto-hide: a single timer reset by any interaction. Stays 5s minimum, and never
     //    hides while paused, scrubbing, holding, panel open, or locked.
     //
     //    isSeekingFast/isHolding must be keys here, not just checked after delay() —
@@ -294,7 +294,7 @@ fun PhonePlayerScreen(
                 )
         )
 
-        // ─ـ Layer 2: Gesture surface (gated by ui.gesturesEnabled) ──────────
+        // ── Layer 2: Gesture surface (gated by ui.gesturesEnabled) ──────────
         Box(
             Modifier.fillMaxSize()
                 .pointerInput(ui.gesturesEnabled, showControlPanel) {
@@ -402,14 +402,14 @@ fun PhonePlayerScreen(
                 IconButton(onClick = {
                     if (showControlPanel) showControlPanel = false else onBack()
                 }) {
-                    Icon(painterResource(R.drawable.ic_arrow_back), "Back", tint = PlayerColors.iconDefault)
+                    Icon(WatermelonIcons.ArrowBack, "Back", tint = PlayerColors.iconDefault)
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { ui.lock(); onLockChanged?.invoke(true) }) {
-                    Icon(painterResource(R.drawable.ic_lock), "Lock", tint = PlayerColors.iconDefault)
+                    Icon(WatermelonIcons.Lock, "Lock", tint = PlayerColors.iconDefault)
                 }
                 IconButton(onClick = { showControlPanel = !showControlPanel }) {
-                    Icon(painterResource(R.drawable.ic_more_horizontal), "Menu", tint = if (showControlPanel) PlayerColors.iconActive else PlayerColors.iconDefault)
+                    Icon(WatermelonIcons.MoreHoriz, "Menu", tint = if (showControlPanel) PlayerColors.iconActive else PlayerColors.iconDefault)
                 }
             }
 
@@ -431,21 +431,21 @@ fun PhonePlayerScreen(
                     }
                     run { lastInteraction = System.nanoTime(); ui.showControls() }
                 }) {
-                    Icon(painterResource(R.drawable.ic_skip_previous), "Previous track",
+                    Icon(WatermelonIcons.SkipPrevious, "Previous track",
                         tint = PlayerColors.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
                 }
                 IconButton(onClick = {
                     viewModel.onIntent(UserIntent.Seek((position - 10_000L).coerceAtLeast(0L)))
                     run { lastInteraction = System.nanoTime(); ui.showControls() }
                 }) {
-                    Icon(painterResource(R.drawable.ic_rewind), "Skip back 10s",
+                    Icon(WatermelonIcons.Rewind, "Skip back 10s",
                         tint = PlayerColors.iconDefault, modifier = Modifier.width(34.dp).height(34.dp))
                 }
                 IconButton(
                     onClick = { viewModel.onIntent(if (isPlaying) UserIntent.Pause else UserIntent.Resume) }
                 ) {
                     Icon(
-                        painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play),
+                        if (isPlaying) WatermelonIcons.Pause else WatermelonIcons.Play,
                         if (isPlaying) "Pause" else "Play",
                         tint = PlayerColors.iconDefault,
                         modifier = Modifier.width(52.dp).height(52.dp)
@@ -455,7 +455,7 @@ fun PhonePlayerScreen(
                     viewModel.onIntent(UserIntent.Seek((position + 10_000L).coerceAtMost(durationMs)))
                     run { lastInteraction = System.nanoTime(); ui.showControls() }
                 }) {
-                    Icon(painterResource(R.drawable.ic_fast_forward), "Skip forward 10s",
+                    Icon(WatermelonIcons.FastForward, "Skip forward 10s",
                         tint = PlayerColors.iconDefault, modifier = Modifier.width(34.dp).height(34.dp))
                 }
                 // Next track: INVISIBLE when there is no adjacent next file.
@@ -464,7 +464,7 @@ fun PhonePlayerScreen(
                         PlaybackQueue.nextOf(uri)?.let { onSkipToTrack?.invoke(it) }
                         run { lastInteraction = System.nanoTime(); ui.showControls() }
                     }) {
-                        Icon(painterResource(R.drawable.ic_skip_next), "Next track",
+                        Icon(WatermelonIcons.SkipNext, "Next track",
                             tint = PlayerColors.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
                     }
                 }
@@ -539,7 +539,7 @@ fun PhonePlayerScreen(
             }
         }
 
-        // ─ـ Layer 4: Transient indicators ───────────────────────────────────
+        // ── Layer 4: Transient indicators ───────────────────────────────────
         if (isHolding) {
             Row(
                 modifier = Modifier.align(Alignment.Center)
@@ -577,7 +577,7 @@ fun PhonePlayerScreen(
             ) { Text(msg, color = PlayerColors.textPrimary) }
         }
 
-        // ─ـ TOPMOST: lock overlay above everything, blocks all touch ────────
+        // ── TOPMOST: lock overlay above everything, blocks all touch ────────
         if (ui.isLocked) {
             com.watermelon.ui.components.LockOverlay(
                 onUnlock = { ui.unlock(); onLockChanged?.invoke(false) },
@@ -586,7 +586,7 @@ fun PhonePlayerScreen(
         }
     }
 
-    // ─ـ Layer 5: Sleep timer dialog ─────────────────────────────────────────
+    // ── Layer 5: Sleep timer dialog ─────────────────────────────────────────
     if (showSleepTimerDialog) {
         SleepTimerDialog(
             onDismiss = { showSleepTimerDialog = false },

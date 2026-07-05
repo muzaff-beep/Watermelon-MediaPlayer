@@ -16,12 +16,14 @@ data class Playlist(
 )
 
 enum class PlaylistType {
-    RECENTLY_ADDED,  // System — auto-populated, last 7 days
-    FAVOURITES,      // System — user manually adds videos
-    USER             // Personal — user-created
+    RECENTLY_ADDED,      // System — auto-populated, last 7 days
+    FAVOURITES,          // System — user manually adds videos
+    CONTINUE_WATCHING,   // System — auto-populated from saved (in-progress) resume positions
+    USER                 // Personal — user-created
 }
 
 object SystemPlaylist {
-    const val ID_RECENTLY_ADDED = "__recently_added__"
-    const val ID_FAVOURITES     = "__favourites__"
+    const val ID_RECENTLY_ADDED     = "__recently_added__"
+    const val ID_FAVOURITES         = "__favourites__"
+    const val ID_CONTINUE_WATCHING  = "__continue_watching__"
 }

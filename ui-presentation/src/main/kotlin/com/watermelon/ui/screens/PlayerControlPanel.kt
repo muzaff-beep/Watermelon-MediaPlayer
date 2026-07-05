@@ -45,7 +45,7 @@ fun ControlPanel(
     currentOrientation: ScreenOrientation,
     onOrientationChange: (ScreenOrientation) -> Unit,
     onRepeat: () -> Unit, onShuffle: () -> Unit, onScreenshot: () -> Unit,
-    onSleepTimer: () -> Unit, onPip: () -> Unit, onBackground: () -> Unit, onPlaylist: () -> Unit,
+    onSleepTimer: () -> Unit, onPip: () -> Unit, onBackground: () -> Unit,
     onShare: () -> Unit, onFavourite: () -> Unit, onAddToPlaylist: () -> Unit, onDelete: () -> Unit
 ) {
     Column(
@@ -89,7 +89,12 @@ fun ControlPanel(
         }
         HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconStub(WatermelonIcons.VolumeMute, "Mute", isMuted, onMuteToggle)  // replaced
+            IconStub(
+                icon        = if (isMuted) WatermelonIcons.VolumeMute else WatermelonIcons.VolumeHigh,
+                description = if (isMuted) "Unmute" else "Mute",
+                active      = isMuted,
+                onClick     = onMuteToggle
+            )
             val repeatIcon = when (repeatMode) {
                 RepeatMode.NONE -> WatermelonIcons.RepeatOff
                 RepeatMode.ONE -> WatermelonIcons.RepeatOne
@@ -101,7 +106,6 @@ fun ControlPanel(
             IconStub(R.drawable.ic_sleep_timer, "Sleep timer", false, onSleepTimer)  // custom keep
             IconStub(R.drawable.ic_pip, "PiP", isPiP, onPip)  // custom keep
             IconStub(R.drawable.ic_background_play, "Background play", isBackground, onBackground)  // custom keep
-            IconStub(WatermelonIcons.PlaylistAdd, "Playlist", false, onPlaylist)  // replaced
         }
         HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
         PanelLabel("File")

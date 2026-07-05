@@ -531,7 +531,6 @@ fun PhonePlayerScreen(
                         if (!isBackgroundEnabled) { isBackgroundEnabled = true; isPiPEnabled = false; onBackgroundClick?.invoke(true) }
                         else { isBackgroundEnabled = false; onBackgroundClick?.invoke(false) }
                     },
-                    onPlaylist = { },
                     onShare = { onShare?.invoke() },
                     onFavourite = { onFavourite?.invoke(!isFavourite) },
                     onAddToPlaylist = { onAddToPlaylist?.invoke() },

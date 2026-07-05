@@ -12,6 +12,7 @@ import com.watermelon.common.controller.PlaybackController
 import com.watermelon.common.model.PlaybackState
 import com.watermelon.common.model.RepeatMode
 import com.watermelon.common.model.SleepTimerMode
+import com.watermelon.common.repository.PlaybackPositionRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,13 +32,20 @@ import java.io.FileOutputStream
  *
  * Repeat and shuffle delegate directly to ExoPlayer's built-in support.
  * Sleep timer supports three modes: end-of-video, end-of-folder (stub), custom minutes.
+ *
+ * Resume position: if [positionRepository] is supplied, [play] auto-resolves a saved
+ * position for (uri, fileSize) when the caller doesn't specify one explicitly, and the
+ * current position is periodically persisted (piggybacking on the existing position
+ * ticker) plus flushed on [pause] and [release]. The saved position is cleared once a
+ * video finishes naturally (STATE_ENDED) so finished videos don't restart mid-way.
  */
 @UnstableApi
 class PlaybackControllerImpl(
     private val context: Context,
     private val player: Player,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
-    private val screenshotProvider: (() -> Bitmap?)? = null
+    private val screenshotProvider: (() -> Bitmap?)? = null,
+    private val positionRepository: PlaybackPositionRepository? = null
 ) : PlaybackController {
 
     private val _playbackState   = MutableStateFlow(PlaybackState.IDLE)
@@ -56,6 +64,10 @@ class PlaybackControllerImpl(
     private var pendingSleepMode: SleepTimerMode? = null
     private var positionJob: Job? = null
 
+    // Identity of the currently-loaded item, for saving/clearing its resume position.
+    private var currentUriForPosition: String? = null
+    private var currentFileSizeForPosition: Long = 0L
+
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             com.watermelon.common.util.FileLogger.i("Playback",
@@ -69,6 +81,11 @@ class PlaybackControllerImpl(
                 else                   -> PlaybackState.IDLE
             }
             _playbackState.value = mapped
+
+            if (state == Player.STATE_ENDED) {
+                // Finished naturally — don't resume mid-way next time.
+                clearSavedPositionAsync()
+            }
 
             // Sleep timer: end-of-video mode.
             if (state == Player.STATE_ENDED &&
@@ -118,6 +135,22 @@ class PlaybackControllerImpl(
         }.getOrNull() ?: "Video"
     }
 
+    /**
+     * Resolves the file size for [uri] via MediaStore, used as part of the stable
+     * (uri, fileSize) identity key for resume positions — same convention as MediaItem
+     * and SubtitleOffsets. Returns 0 if unresolvable (e.g. non-content:// uri).
+     */
+    private fun resolveFileSize(uri: String): Long {
+        return runCatching {
+            val parsed = android.net.Uri.parse(uri)
+            context.contentResolver.query(
+                parsed,
+                arrayOf(android.provider.MediaStore.Video.Media.SIZE),
+                null, null, null
+            )?.use { c -> if (c.moveToFirst()) c.getLong(0) else null }
+        }.getOrNull() ?: 0L
+    }
+
     private fun stateName(s: Int) = when (s) {
         Player.STATE_IDLE      -> "IDLE"
         Player.STATE_BUFFERING -> "BUFFERING"
@@ -135,7 +168,13 @@ class PlaybackControllerImpl(
             player.playWhenReady = true
             return
         }
-        com.watermelon.common.util.FileLogger.i("Playback", "play() called uri=$uri start=$startPositionMs")
+
+        val fileSize = resolveFileSize(uri)
+        currentUriForPosition = uri
+        currentFileSizeForPosition = fileSize
+
+        com.watermelon.common.util.FileLogger.i("Playback",
+            "play() called uri=$uri requestedStart=$startPositionMs")
         _playbackState.value = PlaybackState.LOADING
 
         val title = resolveDisplayName(uri)
@@ -153,11 +192,28 @@ class PlaybackControllerImpl(
         com.watermelon.common.util.FileLogger.i("Playback",
             "play() — setMediaItem+prepare+playWhenReady done; playerState=${player.playbackState}")
         startPositionTicker()
+
+        // If the caller didn't specify an explicit resume position, look one up
+        // asynchronously (SQLite read off the main thread) and seek once resolved —
+        // avoids blocking playback start on a DB query.
+        if (startPositionMs <= 0L && positionRepository != null) {
+            scope.launch {
+                val saved = runCatching { positionRepository.getPosition(uri, fileSize) }.getOrNull()
+                // Only apply if this is still the item the user is watching (guards against
+                // a fast subsequent play() call to a different uri completing first).
+                if (saved != null && saved > 0L && currentUriForPosition == uri) {
+                    com.watermelon.common.util.FileLogger.i("Playback",
+                        "play() — resuming saved position=$saved for uri=$uri")
+                    seekTo(saved)
+                }
+            }
+        }
     }
 
     override fun pause()  {
         com.watermelon.common.util.FileLogger.i("Playback", "pause()")
         player.playWhenReady = false
+        saveSavedPositionAsync()
     }
     override fun resume() {
         com.watermelon.common.util.FileLogger.i("Playback", "resume()")
@@ -219,7 +275,22 @@ class PlaybackControllerImpl(
         }.getOrNull()
     }
 
+    /**
+     * Releases resources. The final position save is done synchronously (via runBlocking)
+     * *before* cancelling [scope] — otherwise scope.cancel() would abort the fire-and-forget
+     * coroutine from [saveSavedPositionAsync] before its SQLite write completes, silently
+     * dropping the last few seconds of resume progress on every teardown.
+     */
     fun release() {
+        val repo = positionRepository
+        val uri = currentUriForPosition
+        if (repo != null && uri != null) {
+            val positionMs = player.currentPosition
+            val fileSize = currentFileSizeForPosition
+            runCatching {
+                kotlinx.coroutines.runBlocking { repo.savePosition(uri, fileSize, positionMs) }
+            }
+        }
         positionJob?.cancel()
         sleepTimer.cancel()
         player.removeListener(listener)
@@ -229,10 +300,39 @@ class PlaybackControllerImpl(
     private fun startPositionTicker() {
         if (positionJob?.isActive == true) return
         positionJob = scope.launch {
+            var ticksSinceSave = 0
             while (isActive) {
                 _currentPosition.value = player.currentPosition
+                ticksSinceSave++
+                // Persist roughly every ~5s (POSITION_TICK_MS * SAVE_EVERY_N_TICKS) rather
+                // than on every 250ms tick, to avoid hammering SQLite during playback.
+                if (ticksSinceSave >= SAVE_EVERY_N_TICKS) {
+                    ticksSinceSave = 0
+                    saveSavedPositionAsync()
+                }
                 delay(POSITION_TICK_MS)
             }
+        }
+    }
+
+    /** Fire-and-forget save of the current position for the currently-loaded item. */
+    private fun saveSavedPositionAsync() {
+        val repo = positionRepository ?: return
+        val uri = currentUriForPosition ?: return
+        val fileSize = currentFileSizeForPosition
+        val positionMs = player.currentPosition
+        scope.launch {
+            runCatching { repo.savePosition(uri, fileSize, positionMs) }
+        }
+    }
+
+    /** Fire-and-forget clear of the saved position for the currently-loaded item. */
+    private fun clearSavedPositionAsync() {
+        val repo = positionRepository ?: return
+        val uri = currentUriForPosition ?: return
+        val fileSize = currentFileSizeForPosition
+        scope.launch {
+            runCatching { repo.clearPosition(uri, fileSize) }
         }
     }
 
@@ -240,5 +340,6 @@ class PlaybackControllerImpl(
         const val MIN_SPEED        = 0.5f
         const val MAX_SPEED        = 8.0f
         private const val POSITION_TICK_MS = 250L
+        private const val SAVE_EVERY_N_TICKS = 20  // ~5s at 250ms/tick
     }
 }

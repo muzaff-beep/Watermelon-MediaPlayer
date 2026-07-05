@@ -6,6 +6,7 @@ import com.watermelon.common.model.MediaItem
 import com.watermelon.common.model.Playlist
 import com.watermelon.common.model.PlaylistType
 import com.watermelon.common.model.SystemPlaylist
+import com.watermelon.common.repository.FolderVisibilityStore
 import com.watermelon.common.repository.MediaRepository
 import com.watermelon.common.repository.PlaylistRepository
 import com.watermelon.storage.db.WatermelonDatabase
@@ -14,7 +15,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
@@ -32,22 +32,34 @@ import java.util.UUID
  * saved resume position (written by PlaybackControllerImpl during playback) shows up here,
  * most-recently-watched first, until it either finishes (position cleared) or is removed.
  * These tables are created via MigrationV7ToV8 if not already present.
+ *
+ * Folder visibility: videos in a folder the user has hidden (via [FolderVisibilityStore],
+ * the same mechanism the plain folder-tree browser uses) are excluded from every computed
+ * system playlist (Recently Added, Continue Watching, Favourites) as well as from user
+ * playlists, since none of those should surface content the user asked to hide.
  */
 class PlaylistRepositoryImpl(
     private val db: WatermelonDatabase,
-    private val mediaRepository: MediaRepository
+    private val mediaRepository: MediaRepository,
+    private val folderVisibilityStore: FolderVisibilityStore
 ) : PlaylistRepository {
 
     private val sevenDaysMs = 7L * 24 * 60 * 60 * 1000
 
+    /** All media, minus anything living in a folder the user has hidden. */
+    private fun visibleMedia(all: List<MediaItem>): List<MediaItem> =
+        all.filter { folderVisibilityStore.isFolderVisible(it.parentFolder) }
+
     override fun observeAll(): Flow<List<Playlist>> = combine(
         mediaRepository.observeAllMedia(),
-        observeUserPlaylists()
-    ) { allMedia, userPlaylists ->
+        observeUserPlaylists(),
+        folderVisibilityStore.visibilityVersion
+    ) { allMediaUnfiltered, userPlaylists, _ ->
+        val allMedia = visibleMedia(allMediaUnfiltered)
         val now = System.currentTimeMillis()
         val recentCount = allMedia.count { it.firstSeenAt >= now - sevenDaysMs }
-        val favCount = getFavouriteCount()
-        val continueWatchingCount = getContinueWatchingCount()
+        val favCount = getFavouriteCount(allMedia)
+        val continueWatchingCount = getContinueWatchingCount(allMedia)
 
         val recentlyAdded = Playlist(
             id        = SystemPlaylist.ID_RECENTLY_ADDED,
@@ -70,54 +82,58 @@ class PlaylistRepositoryImpl(
         listOf(continueWatching, recentlyAdded, favourites) + userPlaylists
     }.flowOn(Dispatchers.IO)
 
-    override fun observeVideos(playlistId: String): Flow<List<MediaItem>> =
-        mediaRepository.observeAllMedia().map { all ->
-            com.watermelon.common.util.FileLogger.i("Playlist",
-                "observeVideos($playlistId) — total media in library: ${all.size}")
-            val result = when (playlistId) {
-                SystemPlaylist.ID_RECENTLY_ADDED -> {
-                    val cutoff = System.currentTimeMillis() - sevenDaysMs
-                    val filtered = all.filter {
-                        val ts = if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt
-                        ts >= cutoff
-                    }.sortedByDescending {
-                        if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt
-                    }
-                    com.watermelon.common.util.FileLogger.i("Playlist",
-                        "RecentlyAdded — ${filtered.size} videos within 7 days (cutoff=$cutoff)")
-                    filtered
+    override fun observeVideos(playlistId: String): Flow<List<MediaItem>> = combine(
+        mediaRepository.observeAllMedia(),
+        folderVisibilityStore.visibilityVersion
+    ) { allUnfiltered, _ ->
+        val all = visibleMedia(allUnfiltered)
+        com.watermelon.common.util.FileLogger.i("Playlist",
+            "observeVideos($playlistId) — total media in library: ${allUnfiltered.size}, " +
+            "visible (folder-enabled): ${all.size}")
+        val result = when (playlistId) {
+            SystemPlaylist.ID_RECENTLY_ADDED -> {
+                val cutoff = System.currentTimeMillis() - sevenDaysMs
+                val filtered = all.filter {
+                    val ts = if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt
+                    ts >= cutoff
+                }.sortedByDescending {
+                    if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt
                 }
-                SystemPlaylist.ID_FAVOURITES -> {
-                    val favUris = getFavouriteUris()
-                    val inFav = all.filter { it.uri in favUris }
-                    com.watermelon.common.util.FileLogger.i("Playlist",
-                        "Favourites — favUris=${favUris.size}, matched videos=${inFav.size}")
-                    applyCustomOrder(playlistId, inFav)
-                }
-                SystemPlaylist.ID_CONTINUE_WATCHING -> {
-                    // Keyed by (uri, fileSize) — same stable identity used for MediaItem and
-                    // SubtitleOffsets — so a replaced file at the same path doesn't wrongly
-                    // inherit a stale resume position.
-                    val positionsByKey = getContinueWatchingPositions()
-                    val inProgress = all
-                        .filter { positionsByKey.containsKey(it.uri to it.fileSize) }
-                        .sortedByDescending { positionsByKey.getValue(it.uri to it.fileSize) }
-                    com.watermelon.common.util.FileLogger.i("Playlist",
-                        "ContinueWatching — ${positionsByKey.size} saved position(s), " +
-                        "${inProgress.size} matched to current library")
-                    inProgress
-                }
-                else -> {
-                    val uris = getPlaylistItemUris(playlistId)
-                    val uriSet = uris.toSet()
-                    val inPlaylist = all.filter { it.uri in uriSet }
-                    com.watermelon.common.util.FileLogger.i("Playlist",
-                        "UserPlaylist($playlistId) — items=${uris.size}, matched=${inPlaylist.size}")
-                    applyCustomOrder(playlistId, inPlaylist)
-                }
+                com.watermelon.common.util.FileLogger.i("Playlist",
+                    "RecentlyAdded — ${filtered.size} videos within 7 days (cutoff=$cutoff)")
+                filtered
             }
-            result
-        }.flowOn(Dispatchers.IO)
+            SystemPlaylist.ID_FAVOURITES -> {
+                val favUris = getFavouriteUris()
+                val inFav = all.filter { it.uri in favUris }
+                com.watermelon.common.util.FileLogger.i("Playlist",
+                    "Favourites — favUris=${favUris.size}, matched videos=${inFav.size}")
+                applyCustomOrder(playlistId, inFav)
+            }
+            SystemPlaylist.ID_CONTINUE_WATCHING -> {
+                // Keyed by (uri, fileSize) — same stable identity used for MediaItem and
+                // SubtitleOffsets — so a replaced file at the same path doesn't wrongly
+                // inherit a stale resume position.
+                val positionsByKey = getContinueWatchingPositions()
+                val inProgress = all
+                    .filter { positionsByKey.containsKey(it.uri to it.fileSize) }
+                    .sortedByDescending { positionsByKey.getValue(it.uri to it.fileSize) }
+                com.watermelon.common.util.FileLogger.i("Playlist",
+                    "ContinueWatching — ${positionsByKey.size} saved position(s), " +
+                    "${inProgress.size} matched to current library")
+                inProgress
+            }
+            else -> {
+                val uris = getPlaylistItemUris(playlistId)
+                val uriSet = uris.toSet()
+                val inPlaylist = all.filter { it.uri in uriSet }
+                com.watermelon.common.util.FileLogger.i("Playlist",
+                    "UserPlaylist($playlistId) — items=${uris.size}, matched=${inPlaylist.size}")
+                applyCustomOrder(playlistId, inPlaylist)
+            }
+        }
+        result
+    }.flowOn(Dispatchers.IO)
 
     /**
      * Orders [items] by the saved CustomOrder for [containerId]. Items without a saved
@@ -272,17 +288,17 @@ class PlaylistRepositoryImpl(
         emit(playlists)
     }.flowOn(Dispatchers.IO)
 
-    private fun getFavouriteCount(): Int = runCatching {
-        db.readableDatabase.rawQuery("SELECT COUNT(*) FROM Favourites", null)
-            .use { if (it.moveToFirst()) it.getInt(0) else 0 }
-    }.getOrDefault(0)
+    /** Counts favourites that are also currently visible (not in a hidden folder). */
+    private fun getFavouriteCount(visibleMedia: List<MediaItem>): Int {
+        val favUris = getFavouriteUris()
+        return visibleMedia.count { it.uri in favUris }
+    }
 
-    private fun getContinueWatchingCount(): Int = runCatching {
-        // positionMs > 0 excludes any row that was written with a zero/cleared position.
-        db.readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM PlaybackPositions WHERE positionMs > 0", null
-        ).use { if (it.moveToFirst()) it.getInt(0) else 0 }
-    }.getOrDefault(0)
+    /** Counts in-progress videos that are also currently visible (not in a hidden folder). */
+    private fun getContinueWatchingCount(visibleMedia: List<MediaItem>): Int {
+        val positionsByKey = getContinueWatchingPositions()
+        return visibleMedia.count { positionsByKey.containsKey(it.uri to it.fileSize) }
+    }
 
     /**
      * Maps (uri, fileSize) -> updatedAt for every saved in-progress position, most recent

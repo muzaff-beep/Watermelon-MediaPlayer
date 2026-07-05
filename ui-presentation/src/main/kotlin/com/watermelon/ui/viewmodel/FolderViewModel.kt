@@ -10,7 +10,6 @@ import com.watermelon.common.repository.FolderRepository
 import com.watermelon.common.repository.MediaRepository
 import com.watermelon.common.repository.PlaylistRepository
 import com.watermelon.common.repository.FolderVisibilityStore
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -43,14 +42,11 @@ class FolderViewModel(
     private val settingsStore: FolderVisibilityStore
 ) : ViewModel() {
 
-    // Bumped when folder visibility changes, to re-run the combine.
-    private val visibilityVersion = MutableStateFlow(0)
-
     val rows: StateFlow<List<BrowserRow>> = combine(
         folderRepository.observeFolderTree(),
         mediaRepository.observeAllMedia(),
         playlistRepository.observeAll(),
-        visibilityVersion
+        settingsStore.visibilityVersion
     ) { folders, allMedia, playlists, _ ->
         val durationByFolder = allMedia
             .groupBy { it.parentFolder }
@@ -107,13 +103,17 @@ class FolderViewModel(
 
     /**
      * All folders (unfiltered) for the visibility settings screen, paired with each folder's
-     * current visibility so the UI reacts immediately to toggles (was previously stale until
-     * leaving/re-entering the screen, since this flow never observed visibilityVersion).
+     * current visibility so the UI reacts immediately to toggles. Combines on the shared
+     * [FolderVisibilityStore.visibilityVersion] — the same signal [rows] and
+     * [PlaylistRepositoryImpl][com.watermelon.common.repository.PlaylistRepository] react to —
+     * rather than a ViewModel-local counter, so a toggle made through *any* FolderViewModel
+     * instance (e.g. the settings screen's) is reflected here even if this is a *different*
+     * instance (e.g. the main browser screen's).
      */
     val allFoldersForSettings: StateFlow<List<Pair<FolderNode, Boolean>>> =
         kotlinx.coroutines.flow.combine(
             folderRepository.observeFolderTree(),
-            visibilityVersion
+            settingsStore.visibilityVersion
         ) { tree, _ ->
             tree.map { it to settingsStore.isFolderVisible(it.path) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -147,7 +147,6 @@ class FolderViewModel(
     fun setFolderHidden(path: String, hidden: Boolean) {
         com.watermelon.common.util.FileLogger.i("Visibility", "setFolderHidden($path, hidden=$hidden)")
         settingsStore.setFolderHidden(path, hidden)
-        visibilityVersion.value += 1
         com.watermelon.common.util.FileLogger.i("Visibility",
             "hidden set now: ${settingsStore.getHiddenFolders()}")
     }

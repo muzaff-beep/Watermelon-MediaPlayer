@@ -173,12 +173,23 @@ fun PhonePlayerScreen(
     vhs.DriveAnimation()
 
     // ── Auto-hide: a single timer reset by any interaction. Stays 5s minimum, and never
-    //    hides while paused, scrubbing, holding, panel open, or locked. ──────
+    //    hides while paused, scrubbing, holding, panel open, or locked.
+    //
+    //    isSeekingFast/isHolding must be keys here, not just checked after delay() —
+    //    otherwise a scrub or fast-forward hold that starts and finishes inside the 5s
+    //    window doesn't restart the timer, and controls can vanish mid-gesture right as
+    //    the user reaches for a button. Keying on them cancels + relaunches this effect
+    //    the instant either becomes true, and again once it goes back to false. ──────
     var lastInteraction by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(lastInteraction, ui.controlsVisible, isPlaying, showControlPanel, ui.isLocked) {
+    LaunchedEffect(
+        lastInteraction, ui.controlsVisible, isPlaying, showControlPanel, ui.isLocked,
+        isSeekingFast, isHolding
+    ) {
+        if (isSeekingFast || isHolding) return@LaunchedEffect
         if (ui.controlsVisible && isPlaying && !showControlPanel && !ui.isLocked) {
             kotlinx.coroutines.delay(5_000)
-            // Re-check we're still idle before hiding.
+            // Re-check we're still idle before hiding (belt-and-suspenders: the key
+            // restart above should already cover this, but keep the guard).
             if (!isSeekingFast && !isHolding) ui.hideControls()
         }
     }

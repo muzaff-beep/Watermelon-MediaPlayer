@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.watermelon.ui.R
+import com.watermelon.ui.WatermelonIcons
 
 /**
  * Bottom action bar shown when one or more videos are selected.
@@ -46,25 +47,25 @@ fun VideoSelectionBar(
 
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 LabeledIconButton(
-                    iconRes = R.drawable.ic_favorite,
+                    icon    = WatermelonIcons.Favorite,
                     label   = "Favourite",
                     tint    = MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = onAddToFavourites
                 )
                 LabeledIconButton(
-                    iconRes = R.drawable.ic_playlist_add,
+                    icon    = WatermelonIcons.PlaylistAdd,
                     label   = "Playlist",
                     tint    = MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = onAddToPlaylist
                 )
                 LabeledIconButton(
-                    iconRes = R.drawable.ic_share,
+                    icon    = WatermelonIcons.Share,
                     label   = "Share",
                     tint    = MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = onShare
                 )
                 LabeledIconButton(
-                    iconRes = R.drawable.ic_delete,
+                    icon    = WatermelonIcons.Delete,
                     label   = "Delete",
                     tint    = MaterialTheme.colorScheme.error,
                     onClick = onDelete

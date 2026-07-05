@@ -82,7 +82,13 @@ class FolderViewModel(
             )
         }
         val systemNodes = playlistNodes.filter { it.isSystemPlaylist }
-            .sortedBy { if (it.playlistId == SystemPlaylist.ID_RECENTLY_ADDED) 0 else 1 }
+            .sortedBy {
+                when (it.playlistId) {
+                    SystemPlaylist.ID_CONTINUE_WATCHING -> 0
+                    SystemPlaylist.ID_RECENTLY_ADDED    -> 1
+                    else                                 -> 2
+                }
+            }
         val userNodes = playlistNodes.filter { it.playlistType == PlaylistType.USER }
 
         buildList {

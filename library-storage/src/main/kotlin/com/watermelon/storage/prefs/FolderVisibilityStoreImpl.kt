@@ -3,6 +3,8 @@ package com.watermelon.storage.prefs
 import android.content.Context
 import android.content.SharedPreferences
 import com.watermelon.common.repository.FolderVisibilityStore
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Lightweight persistence for user settings that must survive app restarts.
@@ -20,6 +22,9 @@ class FolderVisibilityStoreImpl(context: Context) : FolderVisibilityStore {
 
     // ── Folder visibility ──────────────────────────────────────────────────────
 
+    private val _visibilityVersion = MutableStateFlow(0)
+    override val visibilityVersion: StateFlow<Int> = _visibilityVersion
+
     override fun getHiddenFolders(): Set<String> =
         prefs.getStringSet(KEY_HIDDEN_FOLDERS, emptySet()) ?: emptySet()
 
@@ -27,6 +32,7 @@ class FolderVisibilityStoreImpl(context: Context) : FolderVisibilityStore {
         val current = getHiddenFolders().toMutableSet()
         if (hidden) current.add(path) else current.remove(path)
         prefs.edit().putStringSet(KEY_HIDDEN_FOLDERS, current).apply()
+        _visibilityVersion.value += 1
     }
 
     override fun isFolderVisible(path: String): Boolean = path !in getHiddenFolders()

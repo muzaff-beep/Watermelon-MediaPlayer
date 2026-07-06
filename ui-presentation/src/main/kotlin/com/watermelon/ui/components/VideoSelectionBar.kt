@@ -12,8 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.watermelon.ui.R
 import com.watermelon.ui.WatermelonIcons
+import com.watermelon.ui.theme.WatermelonSpacing
 
 /**
  * Bottom action bar shown when one or more videos are selected.
@@ -35,7 +35,7 @@ fun VideoSelectionBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = WatermelonSpacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -45,7 +45,7 @@ fun VideoSelectionBar(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs)) {
                 LabeledIconButton(
                     icon    = WatermelonIcons.Favorite,
                     label   = "Favourite",

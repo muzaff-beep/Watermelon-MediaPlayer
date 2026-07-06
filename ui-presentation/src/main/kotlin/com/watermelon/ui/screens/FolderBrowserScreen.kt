@@ -34,13 +34,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.watermelon.common.model.FolderNode
 import com.watermelon.ui.R
 import com.watermelon.ui.WatermelonIcons
 import com.watermelon.ui.components.FolderListItem
 import com.watermelon.ui.components.LabeledIconButton
+import com.watermelon.ui.theme.WatermelonSpacing
 import com.watermelon.ui.viewmodel.BrowserRow
 import com.watermelon.ui.viewmodel.FolderViewModel
 
@@ -140,7 +140,7 @@ fun FolderBrowserScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = WatermelonSpacing.sm, vertical = WatermelonSpacing.xs),
             verticalAlignment = Alignment.CenterVertically
         ) {
             LabeledIconButton(
@@ -198,8 +198,8 @@ fun FolderBrowserScreen(
         when (currentLayout) {
             FolderLayout.LIST -> LazyColumn(
                 state   = listState,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                modifier = Modifier.fillMaxSize().padding(horizontal = WatermelonSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs / 2)
             ) {
                 rows.forEach { row ->
                     when (row) {
@@ -222,9 +222,9 @@ fun FolderBrowserScreen(
             FolderLayout.GRID -> LazyVerticalGrid(
                 state   = gridState,
                 columns = gridColumns,
-                modifier = Modifier.fillMaxSize().padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement   = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxSize().padding(WatermelonSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm),
+                verticalArrangement   = Arrangement.spacedBy(WatermelonSpacing.sm)
             ) {
                 rows.forEach { row ->
                     when (row) {
@@ -250,15 +250,23 @@ fun FolderBrowserScreen(
     }
 }
 
-/** Eyebrow section header: "MY VIDEO PLAYLISTS" / "MAIN STORAGE". */
+/**
+ * Eyebrow section header: "MY VIDEO PLAYLISTS" / "MAIN STORAGE". Uses Team 0's new
+ * `labelSmall` overline/badge style (letter-spaced, compact) from the expanded
+ * typography scale, instead of a one-off `11.sp` size hand-picked just for this header.
+ */
 @Composable
 private fun SectionHeader(title: String) {
     Text(
         text       = title.uppercase(),
         color      = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontSize   = 11.sp,
+        style      = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Bold,
-        modifier   = Modifier.fillMaxWidth().padding(start = 12.dp, top = 14.dp, bottom = 4.dp)
+        modifier   = Modifier.fillMaxWidth().padding(
+            start  = WatermelonSpacing.md,
+            top    = WatermelonSpacing.md,
+            bottom = WatermelonSpacing.xs
+        )
     )
 }
 

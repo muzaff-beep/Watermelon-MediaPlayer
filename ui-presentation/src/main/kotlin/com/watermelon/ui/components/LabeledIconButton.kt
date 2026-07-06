@@ -1,10 +1,11 @@
 package com.watermelon.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,8 +19,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.watermelon.ui.theme.WatermelonShapes
+import com.watermelon.ui.theme.WatermelonSpacing
 
 /**
  * An icon button with a visible text label beneath it. Used app-wide in toolbars,
@@ -30,6 +31,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
  * @param label visible caption shown under the icon
  * @param onClick tap handler
  * @param active when true, icon + label use the primary/active color
+ * @param enabled when false, the button is dimmed and not clickable. Previously this
+ *   component had no disabled state at all — every consumer rendered as fully
+ *   interactive regardless of whether the action was actually available, and tap
+ *   used bare [Modifier.clickable] with no `enabled` gate.
  */
 @Composable
 fun LabeledIconButton(
@@ -38,16 +43,21 @@ fun LabeledIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     active: Boolean = false,
+    enabled: Boolean = true,
     tint: Color = MaterialTheme.colorScheme.onSurface
 ) {
-    val resolvedTint = if (active) MaterialTheme.colorScheme.primary else tint
+    val resolvedTint = when {
+        !enabled -> tint.copy(alpha = 0.38f) // Material3's standard disabled-content alpha
+        active   -> MaterialTheme.colorScheme.primary
+        else     -> tint
+    }
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .clip(RoundedCornerShape(WatermelonShapes.Radius.small))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = WatermelonSpacing.sm, vertical = WatermelonSpacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs / 2)
     ) {
         when (icon) {
             is ImageVector -> {

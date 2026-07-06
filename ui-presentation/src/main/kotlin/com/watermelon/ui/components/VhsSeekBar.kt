@@ -4,7 +4,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -13,9 +12,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.watermelon.ui.theme.PlayerColors
 import kotlin.math.abs
 
 /**
@@ -53,9 +52,10 @@ fun VhsSeekBar(
         if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val shownFraction = if (dragging) dragFraction else playbackFraction
 
-    val activeColor   = MaterialTheme.colorScheme.primary
-    val inactiveColor = Color.White.copy(alpha = 0.3f)
-    val thumbColor    = MaterialTheme.colorScheme.primary
+    val colors        = PlayerColors.current
+    val activeColor   = colors.seekBarFill
+    val inactiveColor = colors.seekBarTrack
+    val thumbColor    = colors.seekBarThumb
 
     androidx.compose.foundation.Canvas(
         modifier = modifier

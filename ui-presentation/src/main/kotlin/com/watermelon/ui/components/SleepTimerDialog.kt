@@ -9,12 +9,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +28,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.watermelon.ui.theme.PlayerColors
+import com.watermelon.ui.theme.WatermelonShapes
+import com.watermelon.ui.theme.WatermelonSpacing
+import com.watermelon.ui.theme.WatermelonTypography
 
 /**
  * Sleep timer configuration dialog. User chooses one of three modes:
@@ -63,12 +68,12 @@ fun SleepTimerDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-                .padding(20.dp),
+                .background(MaterialTheme.colorScheme.surface, WatermelonShapes.sheet)
+                .padding(WatermelonSpacing.lg),
             contentAlignment = Alignment.Center
         ) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -78,24 +83,35 @@ fun SleepTimerDialog(
                 )
 
                 // Active-timer banner — only shown while a custom countdown is running.
+                // Uses the Warning Yellow token (via PlayerColors) rather than surfaceVariant,
+                // so an in-progress countdown reads as a transient/caution state consistent
+                // with the same semantic role used for buffering elsewhere in the player.
                 if (isRunning) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                            .padding(12.dp),
+                            .background(PlayerColors.current.warning.copy(alpha = 0.14f), WatermelonShapes.card)
+                            .border(WatermelonSpacing.hairline, PlayerColors.current.warning.copy(alpha = 0.4f), WatermelonShapes.card)
+                            .padding(WatermelonSpacing.md),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm)
                         ) {
                             Text(
                                 "Timer running — ${formatRemaining(remainingMs)} left",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                style = WatermelonTypography.timecode,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                            Button(onClick = { onCancelTimer(); onDismiss() }) {
+                            Button(
+                                onClick = { onCancelTimer(); onDismiss() },
+                                shape = WatermelonShapes.control,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PlayerColors.current.warning,
+                                    contentColor = PlayerColors.current.background
+                                )
+                            ) {
                                 Text("Cancel timer")
                             }
                         }
@@ -118,7 +134,7 @@ fun SleepTimerDialog(
 
                 // Mode 3: Custom time
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     ModeButton(
@@ -130,7 +146,7 @@ fun SleepTimerDialog(
                     if (selectedMode == "custom") {
                         // Preset buttons
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs + 2.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             listOf(5, 15, 30, 60).forEach { minutes ->
@@ -140,7 +156,8 @@ fun SleepTimerDialog(
                                         customMinutes = minutes.toString()
                                         selectedPreset = minutes
                                     },
-                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    shape = WatermelonShapes.control,
+                                    colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     ),
@@ -148,13 +165,13 @@ fun SleepTimerDialog(
                                         .weight(1f)
                                         .then(
                                             if (isSelected)
-                                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, WatermelonShapes.control)
                                             else Modifier
                                         )
                                 ) {
                                     Text(
                                         "${minutes}m",
-                                        fontSize = MaterialTheme.typography.labelSmall.fontSize,
+                                        style = WatermelonTypography.timecode,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
@@ -170,6 +187,11 @@ fun SleepTimerDialog(
                             },
                             label = { Text("Minutes") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            shape = WatermelonShapes.control,
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline
+                            ),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
@@ -178,11 +200,16 @@ fun SleepTimerDialog(
 
                 // Action buttons
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.md),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Button(
                         onClick = onDismiss,
+                        shape = WatermelonShapes.control,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Cancel")
@@ -203,6 +230,11 @@ fun SleepTimerDialog(
                             }
                         },
                         enabled = selectedMode != null && (selectedMode != "custom" || customMinutes.toIntOrNull() != null),
+                        shape = WatermelonShapes.control,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = PlayerColors.current.textPrimary
+                        ),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Set")
@@ -221,14 +253,14 @@ private fun ModeButton(label: String, isSelected: Boolean, onClick: () -> Unit) 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant, WatermelonShapes.control)
             .then(
                 if (isSelected)
-                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, WatermelonShapes.control)
                 else Modifier
             )
             .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(WatermelonSpacing.md),
         contentAlignment = Alignment.Center
     ) {
         Text(

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.watermelon.common.model.SubtitleDirection
 import com.watermelon.common.model.SubtitleStyle
+import com.watermelon.ui.theme.WatermelonSpacing
 
 /**
  * Renders one subtitle cue. Text arrives already bidi-formatted; [style] drives size, color,
@@ -40,7 +41,7 @@ fun SubtitleOverlay(
         SubtitleDirection.FORCE_RTL -> true
         SubtitleDirection.FORCE_LTR -> false
     }
-    Box(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    Box(modifier = modifier.fillMaxWidth().padding(horizontal = WatermelonSpacing.md)) {
         Text(
             text = text,
             color = Color(style.textColorArgb),
@@ -50,13 +51,16 @@ fun SubtitleOverlay(
             textDecoration = if (style.underline) TextDecoration.Underline else TextDecoration.None,
             style = TextStyle(
                 fontSize = style.sizeSp.sp,
+                // Scrim behind cue text is intentionally theme-independent (always a dark
+                // wash) so subtitles stay legible over any video content, in both the
+                // dark- and light-mode player chrome. Not a PlayerColors token by design.
                 background = Color.Black.copy(alpha = 0.55f)
             ),
             overflow = TextOverflow.Visible,
             modifier = Modifier
                 .align(if (rtl) Alignment.CenterEnd else Alignment.CenterStart)
                 .wrapContentWidth()
-                .padding(4.dp)
+                .padding(WatermelonSpacing.xs)
         )
     }
 }

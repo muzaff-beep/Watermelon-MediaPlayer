@@ -2,7 +2,6 @@ package com.watermelon.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,9 +24,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.watermelon.common.model.FolderNode
 import com.watermelon.ui.screens.ItemSize
+import com.watermelon.ui.theme.WatermelonShapes
+import com.watermelon.ui.theme.WatermelonSpacing
 
 /**
  * Folder item for list and grid layouts. No thumbnail (thumbnails live on video items).
@@ -50,15 +49,18 @@ fun FolderListItem(
         ItemSize.MEDIUM -> if (isGrid) 56.dp else 44.dp
         ItemSize.LARGE  -> if (isGrid) 80.dp else 64.dp
     }
+    // Base spacing grid steps (Team 0 tokens); LARGE nudges up half a step beyond `lg`
+    // since the size scale is deliberately dramatic (see class doc) and the grid tops
+    // out at `lg` for a "standard" step.
     val hPad: Dp = when (itemSize) {
-        ItemSize.SMALL  -> 8.dp
-        ItemSize.MEDIUM -> 14.dp
-        ItemSize.LARGE  -> 20.dp
+        ItemSize.SMALL  -> WatermelonSpacing.sm
+        ItemSize.MEDIUM -> WatermelonSpacing.md
+        ItemSize.LARGE  -> WatermelonSpacing.lg
     }
     val vPad: Dp = when (itemSize) {
-        ItemSize.SMALL  -> 6.dp
-        ItemSize.MEDIUM -> 12.dp
-        ItemSize.LARGE  -> 18.dp
+        ItemSize.SMALL  -> WatermelonSpacing.xs + WatermelonSpacing.xs / 2
+        ItemSize.MEDIUM -> WatermelonSpacing.sm + WatermelonSpacing.xs
+        ItemSize.LARGE  -> WatermelonSpacing.lg - WatermelonSpacing.xs / 2
     }
 
     val metaText = "${folder.itemCount} files · ${
@@ -66,14 +68,14 @@ fun FolderListItem(
     }"
 
     val clickMod = modifier
-        .clip(RoundedCornerShape(12.dp))
+        .clip(WatermelonShapes.card)
         .clickable { onClick(folder) }
 
     if (isGrid) {
         Column(
             modifier = clickMod.fillMaxWidth().padding(hPad, vPad),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm)
         ) {
             FolderIcon(size = iconDp, isPlaylist = folder.isPlaylist)
             Row(
@@ -94,11 +96,9 @@ fun FolderListItem(
                     fontWeight = FontWeight.Medium
                 )
                 if (folder.hasNewFiles) {
-                    Icon(
-                        painterResource(R.drawable.ic_badge_new),
-                        contentDescription = "New files",
-                        tint     = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(12.dp).padding(start = 2.dp)
+                    StatusBadge.New(
+                        compact = true,
+                        modifier = Modifier.padding(start = WatermelonSpacing.xs / 2)
                     )
                 }
             }
@@ -132,11 +132,8 @@ fun FolderListItem(
                         modifier   = Modifier.weight(1f, fill = false)
                     )
                     if (folder.hasNewFiles) {
-                        Icon(
-                            painterResource(R.drawable.ic_badge_new),
-                            contentDescription = "New files",
-                            tint     = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp).padding(start = 4.dp)
+                        StatusBadge.New(
+                            modifier = Modifier.padding(start = WatermelonSpacing.xs)
                         )
                     }
                 }

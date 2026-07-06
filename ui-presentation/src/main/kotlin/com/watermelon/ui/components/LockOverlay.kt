@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.watermelon.ui.R
 import com.watermelon.ui.theme.PlayerColors
+import com.watermelon.ui.theme.WatermelonSpacing
 
 /**
  * Full-screen lock overlay. Blocks all touch to the player beneath. Two corner lock handles;
@@ -63,20 +64,20 @@ fun LockOverlay(
                 "Slide both locks up together to unlock",
                 color = PlayerColors.current.textSecondary,
                 fontSize = 13.sp,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp)
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = WatermelonSpacing.xl + WatermelonSpacing.md)
             )
         }
         LockHandle(
             progress = leftProgress,
             onDrag = { delta -> leftProgress = (leftProgress - delta / (heightPx * 0.20f)).coerceIn(0f, 1f) },
             onRelease = { if (!unlocked) leftProgress = 0f },
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 32.dp, bottom = 40.dp)
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = WatermelonSpacing.xl, bottom = WatermelonSpacing.xl + WatermelonSpacing.sm)
         )
         LockHandle(
             progress = rightProgress,
             onDrag = { delta -> rightProgress = (rightProgress - delta / (heightPx * 0.20f)).coerceIn(0f, 1f) },
             onRelease = { if (!unlocked) rightProgress = 0f },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 40.dp)
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = WatermelonSpacing.xl, bottom = WatermelonSpacing.xl + WatermelonSpacing.sm)
         )
     }
 }
@@ -94,7 +95,10 @@ private fun LockHandle(
         modifier = modifier
             .size(56.dp)
             .graphicsLayer { translationY = -animated * 120f }
-            .background(PlayerColors.current.sheetBackground.copy(alpha = 0.9f), RoundedCornerShape(28.dp))
+            // Fully round — this is a circular slide-puck affordance, not a card, so it's
+            // kept outside the shared card/control shape scale (spec's single named
+            // exception pattern) rather than forced onto WatermelonShapes.card's 14dp.
+            .background(PlayerColors.current.sheetBackground.copy(alpha = 0.9f), CircleShape)
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onDragEnd = { onRelease() },

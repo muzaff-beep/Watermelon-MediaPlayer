@@ -4,26 +4,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 /**
- * Single source of truth for the player's visual palette — now the same WVGC brand
- * palette used by [WatermelonColors] / [WatermelonTheme], in both a dark and a light
- * [Scheme]. The player screens draw with plain Canvas calls and don't go through
- * Material3's colorScheme, so they read [PlayerColors.current] instead, which resolves
- * against [LocalWatermelonDarkTheme] — the same flag the Settings dark/light toggle sets.
+ * Single source of truth for the player's visual palette — the same Watermelon
+ * MediaPlayer brand palette used by [WatermelonColors] / [WatermelonTheme], in both a
+ * dark and a light [Scheme]. The player screens draw with plain Canvas calls and don't
+ * go through Material3's colorScheme, so they read [PlayerColors.current] instead, which
+ * resolves against [LocalWatermelonDarkTheme] — the same flag the Settings dark/light
+ * toggle sets.
  *
  * MODULARITY: components must reference the *semantic roles* on [current] (e.g.
  * [Scheme.seekBarFill], [Scheme.iconActive]) — never [Palette] hex values directly.
  */
 object PlayerColors {
 
-    /** Raw WVGC brand palette. Do not reference these directly from components. */
+    /** Raw Watermelon brand palette. Do not reference these directly from components. */
     object Palette {
-        val WatermelonRed = WatermelonColors.Palette.WatermelonRed
-        val FreshTeal      = WatermelonColors.Palette.FreshTeal
-        val DeepNavy       = WatermelonColors.Palette.DeepNavy
-        val Charcoal       = WatermelonColors.Palette.Charcoal
-        val SlateGray      = WatermelonColors.Palette.SlateGray
-        val OffWhite       = WatermelonColors.Palette.OffWhite
-        val DeepCharcoal   = WatermelonColors.Palette.DeepCharcoal
+        val WatermelonRed  = WatermelonColors.Palette.WatermelonRed
+        val SoftTeal        = WatermelonColors.Palette.SoftTeal
+        val WarningYellow   = WatermelonColors.Palette.WarningYellow
+        val DeepCarbon      = WatermelonColors.Palette.DeepCarbon
+        val SlateGray       = WatermelonColors.Palette.SlateGray
+        val PaperWhite      = WatermelonColors.Palette.PaperWhite
     }
 
     /** One full set of semantic player tokens. */
@@ -46,51 +46,55 @@ object PlayerColors {
         val textPrimary: Color,
         val textSecondary: Color,
         val accent: Color,
-        val accentSecondary: Color
+        val accentSecondary: Color,
+        /** Buffering / warning / transient-caution states — never used for hard errors. */
+        val warning: Color
     )
 
     val Dark = Scheme(
-        background       = Palette.Charcoal,
-        sheetBackground  = Palette.DeepCharcoal,
-        controlBarScrim  = Palette.Charcoal,
+        background       = Palette.DeepCarbon,
+        sheetBackground  = Palette.SlateGray,
+        controlBarScrim  = Palette.DeepCarbon,
         seekBarFill      = Palette.WatermelonRed,
-        seekBarBuffered  = Palette.OffWhite.copy(alpha = 0.30f),
-        seekBarTrack     = Palette.OffWhite.copy(alpha = 0.18f),
+        seekBarBuffered  = Palette.PaperWhite.copy(alpha = 0.30f),
+        seekBarTrack     = Palette.PaperWhite.copy(alpha = 0.18f),
         seekBarThumb     = Palette.WatermelonRed,
-        seekBarThumbRing = Palette.OffWhite,
+        seekBarThumbRing = Palette.PaperWhite,
         iconActive       = Palette.WatermelonRed,
-        iconDefault      = Palette.OffWhite,
-        iconInactive     = Palette.OffWhite.copy(alpha = 0.55f),
-        iconFocus        = Palette.FreshTeal,
+        iconDefault      = Palette.PaperWhite,
+        iconInactive     = Palette.PaperWhite.copy(alpha = 0.55f),
+        iconFocus        = Palette.SoftTeal,
         levelFill        = Palette.WatermelonRed,
-        levelTrack       = Palette.OffWhite.copy(alpha = 0.20f),
-        levelIcon        = Palette.OffWhite,
-        textPrimary      = Palette.OffWhite,
-        textSecondary    = Palette.OffWhite.copy(alpha = 0.70f),
+        levelTrack       = Palette.PaperWhite.copy(alpha = 0.20f),
+        levelIcon        = Palette.PaperWhite,
+        textPrimary      = Palette.PaperWhite,
+        textSecondary    = Palette.PaperWhite.copy(alpha = 0.70f),
         accent           = Palette.WatermelonRed,
-        accentSecondary  = Palette.FreshTeal
+        accentSecondary  = Palette.SoftTeal,
+        warning          = Palette.WarningYellow
     )
 
     val Light = Scheme(
-        background       = Palette.OffWhite,
+        background       = Palette.PaperWhite,
         sheetBackground  = Color(0xFFFFFFFF),
-        controlBarScrim  = Palette.OffWhite,
+        controlBarScrim  = Palette.PaperWhite,
         seekBarFill      = Palette.WatermelonRed,
-        seekBarBuffered  = Palette.DeepNavy.copy(alpha = 0.25f),
+        seekBarBuffered  = Palette.DeepCarbon.copy(alpha = 0.25f),
         seekBarTrack     = Palette.SlateGray.copy(alpha = 0.25f),
         seekBarThumb     = Palette.WatermelonRed,
         seekBarThumbRing = Color(0xFFFFFFFF),
         iconActive       = Palette.WatermelonRed,
-        iconDefault      = Palette.DeepNavy,
+        iconDefault      = Palette.DeepCarbon,
         iconInactive     = Palette.SlateGray,
-        iconFocus        = Palette.FreshTeal,
+        iconFocus        = Palette.SoftTeal,
         levelFill        = Palette.WatermelonRed,
         levelTrack       = Palette.SlateGray.copy(alpha = 0.25f),
-        levelIcon        = Palette.DeepNavy,
-        textPrimary      = Palette.Charcoal,
+        levelIcon        = Palette.DeepCarbon,
+        textPrimary      = Palette.DeepCarbon,
         textSecondary    = Palette.SlateGray,
         accent           = Palette.WatermelonRed,
-        accentSecondary  = Palette.FreshTeal
+        accentSecondary  = Palette.SoftTeal,
+        warning          = Palette.WarningYellow
     )
 
     /** Resolves to [Dark] or [Light] based on the active theme (Settings → Pure dark theme). */

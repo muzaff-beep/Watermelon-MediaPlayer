@@ -24,13 +24,11 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -49,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -59,9 +56,13 @@ import com.watermelon.common.model.Playlist
 import com.watermelon.ui.R
 import com.watermelon.ui.WatermelonIcons
 import com.watermelon.ui.components.LabeledIconButton
+import com.watermelon.ui.components.StatusBadge
 import com.watermelon.ui.components.VelocityGuardImage
 import com.watermelon.ui.components.VideoSelectionBar
 import com.watermelon.ui.components.WatermelonLoadingAnimation
+import com.watermelon.ui.theme.WatermelonShapes
+import com.watermelon.ui.theme.WatermelonSpacing
+import com.watermelon.ui.theme.WatermelonTypography
 import com.watermelon.ui.viewmodel.VideoListViewModel
 import kotlinx.coroutines.delay
 
@@ -236,7 +237,7 @@ fun VideoListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .padding(horizontal = WatermelonSpacing.sm, vertical = WatermelonSpacing.xs),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (selection.isActive) {
@@ -285,7 +286,13 @@ fun VideoListScreen(
                 }
             }
 
-            HorizontalDivider()
+            // Deliberate spec separator: hairline thickness, low-alpha outline, no inset —
+            // matches the "thin separators, grid precision" requirement rather than
+            // Material3's default divider treatment.
+            HorizontalDivider(
+                thickness = WatermelonSpacing.hairline,
+                color = MaterialTheme.colorScheme.outline
+            )
 
             // ── Content ───────────────────────────────────────────────────────
             if (sorted.isEmpty()) {
@@ -299,8 +306,8 @@ fun VideoListScreen(
                 when (currentLayout) {
                     VideoLayout.LIST -> LazyColumn(
                         state   = listState,
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        modifier = Modifier.fillMaxSize().padding(horizontal = WatermelonSpacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs / 2)
                     ) {
                         items(sorted, key = { it.uri }) { item ->
                             VideoListItem(
@@ -327,9 +334,9 @@ fun VideoListScreen(
                     VideoLayout.GRID -> LazyVerticalGrid(
                         state   = gridState,
                         columns = gridColumns,
-                        modifier = Modifier.fillMaxSize().padding(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement   = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxSize().padding(WatermelonSpacing.sm),
+                        horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm),
+                        verticalArrangement   = Arrangement.spacedBy(WatermelonSpacing.sm)
                     ) {
                         gridItems(sorted, key = { it.uri }) { item ->
                             VideoListItem(
@@ -383,24 +390,24 @@ private fun VideoListItem(
         ItemSize.LARGE  -> MaterialTheme.typography.bodyLarge
     }
     val selectedBorder = if (isSelected)
-        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, WatermelonShapes.control)
     else Modifier
 
     val clickModifier = Modifier
-        .clip(RoundedCornerShape(8.dp))
+        .clip(WatermelonShapes.control)
         .then(selectedBorder)
         .combinedClickable(onClick = onClick, onLongClick = onLongClick)
 
     if (isGrid) {
         Column(
-            modifier = clickModifier.padding(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = clickModifier.padding(WatermelonSpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs)
         ) {
             VelocityGuardImage(
                 uri             = item.uri,
                 durationMs      = item.durationMs,
                 isScrollingFast = isScrollingFast,
-                modifier        = Modifier.fillMaxWidth().height(thumbH).clip(RoundedCornerShape(6.dp))
+                modifier        = Modifier.fillMaxWidth().height(thumbH).clip(WatermelonShapes.small)
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -411,12 +418,7 @@ private fun VideoListItem(
                     modifier = Modifier.weight(1f)
                 )
                 if (item.lastPlayedAt == null) {
-                    Icon(
-                        painterResource(R.drawable.ic_badge_new),
-                        contentDescription = "New",
-                        tint     = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(13.dp)
-                    )
+                    StatusBadge.New(compact = true)
                 }
             }
         }
@@ -424,7 +426,7 @@ private fun VideoListItem(
         Row(
             modifier = clickModifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = WatermelonSpacing.sm, vertical = WatermelonSpacing.xs),
                 verticalAlignment = Alignment.CenterVertically
             ) {
             VelocityGuardImage(
@@ -434,9 +436,9 @@ private fun VideoListItem(
                 modifier        = Modifier
                     .width(thumbH * 16f / 9f)
                     .height(thumbH)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(WatermelonShapes.small)
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(WatermelonSpacing.md))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -447,17 +449,12 @@ private fun VideoListItem(
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     if (item.lastPlayedAt == null) {
-                        Icon(
-                            painterResource(R.drawable.ic_badge_new),
-                            contentDescription = "New",
-                            tint     = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(13.dp)
-                        )
+                        StatusBadge.New(modifier = Modifier.padding(start = WatermelonSpacing.xs))
                     }
                 }
                 Text(
                     text  = formatDuration(item.durationMs),
-                    style = MaterialTheme.typography.labelSmall,
+                    style = WatermelonTypography.timecode,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

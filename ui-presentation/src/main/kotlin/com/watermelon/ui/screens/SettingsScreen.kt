@@ -1,20 +1,32 @@
 package com.watermelon.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -116,9 +128,11 @@ fun SettingsScreen(
                 NavRow(
                     label = "VHS intensity",
                     value = state.vhsIntensity.name.lowercase().replaceFirstChar { it.uppercase() },
-                    onClick = {
-                        // Cycle intensity OFF -> LOW -> MED -> HIGH -> OFF
-                        val next = VhsIntensity.values()[(state.vhsIntensity.ordinal + 1) % VhsIntensity.values().size]
+                    options = VhsIntensity.values().map { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } },
+                    onSelect = { selected ->
+                        val next = VhsIntensity.values().first {
+                            it.name.lowercase().replaceFirstChar { c -> c.uppercase() } == selected
+                        }
                         onStateChange(state.copy(vhsIntensity = next))
                     }
                 )
@@ -136,23 +150,48 @@ fun SettingsScreen(
                 StepperRow("Text size", "${st.sizeSp}sp",
                     onMinus = { up(st.copy(sizeSp = (st.sizeSp - 2).coerceAtLeast(12))) },
                     onPlus  = { up(st.copy(sizeSp = (st.sizeSp + 2).coerceAtMost(48))) })
-                NavRow("Text color", subtitleColorName(st.textColorArgb), onClick = {
-                    up(st.copy(textColorArgb = nextSubtitleColor(st.textColorArgb)))
-                })
-                NavRow("Position", st.position.name.lowercase().replaceFirstChar { it.uppercase() }, onClick = {
-                    up(st.copy(position = if (st.position == com.watermelon.common.model.SubtitlePosition.BOTTOM)
-                        com.watermelon.common.model.SubtitlePosition.TOP
-                    else com.watermelon.common.model.SubtitlePosition.BOTTOM))
-                })
+                NavRow(
+                    label = "Text color",
+                    value = subtitleColorName(st.textColorArgb),
+                    options = SUBTITLE_COLORS.map { it.second },
+                    onSelect = { selected ->
+                        val argb = SUBTITLE_COLORS.first { it.second == selected }.first
+                        up(st.copy(textColorArgb = argb))
+                    }
+                )
+                NavRow(
+                    label = "Position",
+                    value = st.position.name.lowercase().replaceFirstChar { it.uppercase() },
+                    options = com.watermelon.common.model.SubtitlePosition.values()
+                        .map { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } },
+                    onSelect = { selected ->
+                        val next = com.watermelon.common.model.SubtitlePosition.values().first {
+                            it.name.lowercase().replaceFirstChar { c -> c.uppercase() } == selected
+                        }
+                        up(st.copy(position = next))
+                    }
+                )
                 ToggleRow("Bold", st.bold) { up(st.copy(bold = it)) }
                 ToggleRow("Italic", st.italic) { up(st.copy(italic = it)) }
                 ToggleRow("Underline", st.underline) { up(st.copy(underline = it)) }
-                NavRow("Direction", st.direction.label(), onClick = {
-                    up(st.copy(direction = st.direction.next()))
-                })
-                NavRow("2nd sub direction", st.secondaryDirection.label(), onClick = {
-                    up(st.copy(secondaryDirection = st.secondaryDirection.next()))
-                })
+                NavRow(
+                    label = "Direction",
+                    value = st.direction.label(),
+                    options = com.watermelon.common.model.SubtitleDirection.values().map { it.label() },
+                    onSelect = { selected ->
+                        val next = com.watermelon.common.model.SubtitleDirection.values().first { it.label() == selected }
+                        up(st.copy(direction = next))
+                    }
+                )
+                NavRow(
+                    label = "2nd sub direction",
+                    value = st.secondaryDirection.label(),
+                    options = com.watermelon.common.model.SubtitleDirection.values().map { it.label() },
+                    onSelect = { selected ->
+                        val next = com.watermelon.common.model.SubtitleDirection.values().first { it.label() == selected }
+                        up(st.copy(secondaryDirection = next))
+                    }
+                )
             }
         }
 
@@ -202,7 +241,14 @@ private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                onValueChange = onChange,
+                role = Role.Switch
+            )
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -211,11 +257,61 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f).padding(end = 12.dp)
         )
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
-/** A row that shows a value and navigates / cycles on tap. */
+/** A row that shows a value and opens a dropdown menu of [options] on tap. */
+@Composable
+private fun NavRow(
+    label: String,
+    value: String,
+    options: List<String>,
+    onSelect: (String) -> Unit,
+    accent: Boolean = false
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button) { expanded = true }
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    // Accent red fails AA text-contrast against surfaceVariant in both
+                    // themes, so accent styling here is bold weight only, not color.
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (accent) FontWeight.Bold else FontWeight.Normal
+                )
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+/** A navigation-only row (no dropdown) — used for links like "Folder visibility". */
 @Composable
 private fun NavRow(label: String, value: String, onClick: () -> Unit, accent: Boolean = false) {
     Row(
@@ -230,9 +326,10 @@ private fun NavRow(label: String, value: String, onClick: () -> Unit, accent: Bo
         Text(
             text = "$value ›",
             style = MaterialTheme.typography.bodyMedium,
-            color = if (accent) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = if (accent) FontWeight.SemiBold else FontWeight.Normal
+            // Accent red fails AA text-contrast against surfaceVariant in both themes —
+            // use bold weight, not color, to signal emphasis.
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (accent) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
@@ -248,20 +345,10 @@ private val SUBTITLE_COLORS = listOf(
 private fun subtitleColorName(argb: Long): String =
     SUBTITLE_COLORS.firstOrNull { it.first == argb }?.second ?: "Custom"
 
-private fun nextSubtitleColor(argb: Long): Long {
-    val i = SUBTITLE_COLORS.indexOfFirst { it.first == argb }
-    return SUBTITLE_COLORS[(i + 1) % SUBTITLE_COLORS.size].first
-}
-
 private fun com.watermelon.common.model.SubtitleDirection.label(): String = when (this) {
     com.watermelon.common.model.SubtitleDirection.AUTO -> "Auto"
     com.watermelon.common.model.SubtitleDirection.FORCE_RTL -> "Force RTL"
     com.watermelon.common.model.SubtitleDirection.FORCE_LTR -> "Force LTR"
-}
-
-private fun com.watermelon.common.model.SubtitleDirection.next(): com.watermelon.common.model.SubtitleDirection {
-    val v = com.watermelon.common.model.SubtitleDirection.values()
-    return v[(ordinal + 1) % v.size]
 }
 
 /** Row with -/+ steppers for numerical values. */

@@ -130,6 +130,8 @@ fun PhonePlayerScreen(
     val playbackState by viewModel.playbackState.collectAsStateWithLifecycle()
     val repeatMode by viewModel.repeatMode.collectAsStateWithLifecycle()
     val isShuffled by viewModel.shuffleEnabled.collectAsStateWithLifecycle()
+    val sleepTimerRunning by viewModel.sleepTimerRunning.collectAsStateWithLifecycle()
+    val sleepTimerRemainingMs by viewModel.sleepTimerRemainingMs.collectAsStateWithLifecycle()
     val isPlaying = playbackState == PlaybackState.PLAYING
 
     // ── Single UI state holder ──────────────────────────────────────────────
@@ -622,6 +624,9 @@ fun PhonePlayerScreen(
     if (showSleepTimerDialog) {
         SleepTimerDialog(
             onDismiss = { showSleepTimerDialog = false },
+            isRunning = sleepTimerRunning,
+            remainingMs = sleepTimerRemainingMs,
+            onCancelTimer = { viewModel.cancelSleepTimer() },
             onSetTimer = { mode, minutes ->
                 val sleepMode = when (mode) {
                     "current_video" -> SleepTimerMode.EndOfVideo

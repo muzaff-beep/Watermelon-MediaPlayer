@@ -11,6 +11,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
@@ -20,6 +25,10 @@ import kotlin.math.roundToLong
 /**
  * Custom watermelon-themed seek bar. Played-progress + thumb only (no buffer — offline-first).
  * All colors come from [PlayerColors] semantic tokens, so the look retunes centrally.
+ *
+ * Exposes a slider role via [Modifier.progressBarRangeInfo] / [Modifier.setProgress] so
+ * TalkBack and Switch Access can read the current position and adjust it directly,
+ * independent of the drag/tap gesture handling used for touch input.
  *
  * @param positionMs current playback position
  * @param durationMs total duration
@@ -48,7 +57,21 @@ fun WatermelonSeekBar(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(thumbRadius * 2 + 8.dp)
+            // Visual track stays thin (drawn below), but the touch/semantics target is at
+            // least 48dp tall so the control meets the minimum accessible touch-target size.
+            .height(maxOf(thumbRadius * 2 + 8.dp, 48.dp))
+            .semantics {
+                contentDescription = "Seek bar, ${formatTimeForA11y(positionMs)} of ${formatTimeForA11y(durationMs)}"
+                progressBarRangeInfo = ProgressBarRangeInfo(
+                    current = liveFraction,
+                    range = 0f..1f
+                )
+                setProgress { targetFraction ->
+                    val clamped = targetFraction.coerceIn(0f, 1f)
+                    onSeek((clamped * durationMs).roundToLong())
+                    true
+                }
+            }
             .pointerInput(durationMs) {
                 detectTapGestures { offset ->
                     val f = (offset.x / size.width).coerceIn(0f, 1f)
@@ -74,6 +97,15 @@ fun WatermelonSeekBar(
         widthPx = size.width
         drawSeekBar(colors, fraction, trackHeight.toPx(), thumbRadius.toPx(), scrubbing)
     }
+}
+
+/** "3:45" / "1:02:03" style formatting for the accessibility announcement. */
+private fun formatTimeForA11y(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
 private fun DrawScope.drawSeekBar(

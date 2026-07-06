@@ -11,6 +11,8 @@ interface PlaybackController {
     val isSeekingFast: StateFlow<Boolean>
     val repeatMode: StateFlow<RepeatMode>
     val shuffleEnabled: StateFlow<Boolean>
+    val sleepTimerRemainingMs: StateFlow<Long>
+    val sleepTimerRunning: StateFlow<Boolean>
 
     fun play(uri: String, startPositionMs: Long = 0)
     fun pause()

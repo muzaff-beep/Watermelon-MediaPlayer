@@ -21,6 +21,8 @@ class PlayerViewModel(
     val isSeekingFast: StateFlow<Boolean>       = controller.isSeekingFast
     val repeatMode: StateFlow<RepeatMode>       = controller.repeatMode
     val shuffleEnabled: StateFlow<Boolean>      = controller.shuffleEnabled
+    val sleepTimerRemainingMs: StateFlow<Long>  = controller.sleepTimerRemainingMs
+    val sleepTimerRunning: StateFlow<Boolean>   = controller.sleepTimerRunning
 
     fun onIntent(intent: UserIntent) {
         when (intent) {

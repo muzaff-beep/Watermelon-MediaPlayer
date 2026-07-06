@@ -6,16 +6,31 @@ import android.net.Uri
 import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+
+/** Distinguishes "still extracting" from "extraction failed" — both used to collapse to null. */
+private sealed interface ThumbnailResult {
+    object Loading : ThumbnailResult
+    data class Loaded(val bitmap: Bitmap) : ThumbnailResult
+    object Failed : ThumbnailResult
+}
 
 /**
  * Thumbnail loader that always shows the same frame (10% into the video) regardless of
@@ -37,22 +52,33 @@ fun VelocityGuardImage(
 ) {
     val context = LocalContext.current
 
-    @Suppress("ProduceStateDoesNotAssignValue")
-    val thumbnail by produceState<Bitmap?>(initialValue = null, uri, durationMs) {
-        val loaded = loadThumbnail(context, uri, durationMs)
-        value = loaded
+    val result by produceState<ThumbnailResult>(initialValue = ThumbnailResult.Loading, uri, durationMs) {
+        value = ThumbnailResult.Loading
+        value = loadThumbnail(context, uri, durationMs)
+            ?.let { ThumbnailResult.Loaded(it) }
+            ?: ThumbnailResult.Failed
     }
 
-    Box(modifier.background(Color.Black)) {
-        thumbnail?.let {
-            Image(
-                bitmap             = it.asImageBitmap(),
+    Box(modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        when (val r = result) {
+            is ThumbnailResult.Loaded -> Image(
+                bitmap             = r.bitmap.asImageBitmap(),
                 contentDescription = null,
                 contentScale       = ContentScale.Fit,
                 modifier           = Modifier.fillMaxSize()
             )
+            ThumbnailResult.Loading -> CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            ThumbnailResult.Failed -> Icon(
+                imageVector = Icons.Filled.BrokenImage,
+                contentDescription = "Thumbnail unavailable",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(28.dp)
+            )
         }
-        // If thumbnail is null (first load or error), the primary-color swatch shows through.
     }
 }
 

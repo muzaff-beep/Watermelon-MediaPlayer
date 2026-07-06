@@ -61,6 +61,8 @@ class PlaybackControllerImpl(
     override val shuffleEnabled: StateFlow<Boolean>       = _shuffleEnabled.asStateFlow()
 
     private val sleepTimer = SleepTimerManager(scope) { pause() }
+    override val sleepTimerRemainingMs: StateFlow<Long>   = sleepTimer.remainingMs
+    override val sleepTimerRunning: StateFlow<Boolean>    = sleepTimer.isRunning
     private var pendingSleepMode: SleepTimerMode? = null
     private var positionJob: Job? = null
 

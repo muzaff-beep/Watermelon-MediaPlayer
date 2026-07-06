@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -15,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -49,7 +52,8 @@ fun FolderVisibilityScreen(
             Text(
                 text     = "$hiddenCount hidden",
                 style    = MaterialTheme.typography.labelMedium,
-                color    = MaterialTheme.colorScheme.primary,
+                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )
         }
@@ -74,6 +78,11 @@ fun FolderVisibilityScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .toggleable(
+                            value = isVisible,
+                            onValueChange = { onToggle(path, it) },
+                            role = Role.Switch
+                        )
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -93,10 +102,7 @@ fun FolderVisibilityScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Switch(
-                        checked         = isVisible,
-                        onCheckedChange = { onToggle(path, it) }
-                    )
+                    Switch(checked = isVisible, onCheckedChange = null)
                 }
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }

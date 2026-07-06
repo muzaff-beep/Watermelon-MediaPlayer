@@ -77,13 +77,47 @@ fun FolderBrowserScreen(
     layout: FolderLayout = FolderLayout.LIST,
     modifier: Modifier   = Modifier
 ) {
-    val rows by viewModel.rows.collectAsStateWithLifecycle()
+    val rowsRaw by viewModel.rows.collectAsStateWithLifecycle()
 
     var currentLayout   by rememberSaveable(stateSaver = LayoutSaver) { mutableStateOf(layout) }
     var currentItemSize by rememberSaveable(stateSaver = SizeSaver)   { mutableStateOf(ItemSize.MEDIUM) }
     var ascending       by rememberSaveable { mutableStateOf(true) }
     var sortMenuOpen    by remember { mutableStateOf(false) }
     var currentSort     by rememberSaveable { mutableStateOf(FolderSort.NAME) }
+
+    // Sort/ascending is applied per section (headers stay in place, folders within each
+    // section are reordered) so "MY VIDEO PLAYLISTS" / "MAIN STORAGE" grouping survives.
+    // FolderNode currently exposes no date-modified or resolution field, so DATE and
+    // RESOLUTION fall back to NAME ordering rather than silently no-opping.
+    val rows by remember(rowsRaw, currentSort, ascending) {
+        derivedStateOf {
+            val baseComparator: Comparator<FolderNode> = when (currentSort) {
+                FolderSort.NAME       -> compareBy { it.displayName.lowercase() }
+                FolderSort.SIZE       -> compareBy { it.itemCount }
+                FolderSort.DATE       -> compareBy { it.displayName.lowercase() } // no backing field yet
+                FolderSort.RESOLUTION -> compareBy { it.displayName.lowercase() } // no backing field yet
+            }
+            val nodeComparator = if (ascending) baseComparator else baseComparator.reversed()
+            val folderComparator = Comparator<BrowserRow.Folder> { a, b -> nodeComparator.compare(a.node, b.node) }
+
+            // Group contiguous Folder rows within each Header section and sort within group,
+            // so section grouping ("MY VIDEO PLAYLISTS" / "MAIN STORAGE") is preserved.
+            val result = mutableListOf<BrowserRow>()
+            var bucket = mutableListOf<BrowserRow.Folder>()
+            fun flushBucket() {
+                result += bucket.sortedWith(folderComparator)
+                bucket = mutableListOf()
+            }
+            for (row in rowsRaw) {
+                when (row) {
+                    is BrowserRow.Header -> { flushBucket(); result += row }
+                    is BrowserRow.Folder -> bucket += row
+                }
+            }
+            flushBucket()
+            result
+        }
+    }
 
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
@@ -116,13 +150,13 @@ fun FolderBrowserScreen(
             Box {
                 LabeledIconButton(
                     icon    = WatermelonIcons.Sort,
-                    label   = "Sort: ${currentSort.label()}",
+                    label   = "Sort: ${currentSort.label()}${if (currentSort.isUnavailable()) " *" else ""}",
                     onClick = { sortMenuOpen = true }
                 )
                 DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
                     FolderSort.values().forEach { opt ->
                         DropdownMenuItem(
-                            text    = { Text(opt.label()) },
+                            text    = { Text(opt.label() + if (opt.isUnavailable()) " (uses Name)" else "") },
                             onClick = { currentSort = opt; sortMenuOpen = false }
                         )
                     }
@@ -220,7 +254,7 @@ fun FolderBrowserScreen(
 private fun SectionHeader(title: String) {
     Text(
         text       = title.uppercase(),
-        color      = MaterialTheme.colorScheme.primary,
+        color      = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize   = 11.sp,
         fontWeight = FontWeight.Bold,
         modifier   = Modifier.fillMaxWidth().padding(start = 12.dp, top = 14.dp, bottom = 4.dp)
@@ -231,3 +265,6 @@ private fun FolderSort.label() = when (this) {
     FolderSort.NAME -> "Name"; FolderSort.DATE -> "Date"
     FolderSort.SIZE -> "Count"; FolderSort.RESOLUTION -> "Resolution"
 }
+
+/** True for sort modes with no backing field on [FolderNode] yet (falls back to Name). */
+private fun FolderSort.isUnavailable() = this == FolderSort.DATE || this == FolderSort.RESOLUTION

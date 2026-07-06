@@ -3,7 +3,6 @@ package com.watermelon.ui.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontFeatureSettings
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextAlign
@@ -22,9 +21,6 @@ import androidx.compose.ui.unit.sp
 object WatermelonTypography {
 
     private val farsiFriendly = FontFamily.Default
-
-    /** Tabular (monospaced-digit) feature so timecodes don't jitter as digits change. */
-    private val tabularNumbers = FontFeatureSettings("tnum")
 
     val typography = Typography(
         displayLarge = TextStyle(fontFamily = farsiFriendly, fontSize = 34.sp, fontWeight = FontWeight.SemiBold),

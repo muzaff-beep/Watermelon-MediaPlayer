@@ -140,20 +140,23 @@ fun SleepTimerDialog(
                                         customMinutes = minutes.toString()
                                         selectedPreset = minutes
                                     },
-                                    colors = if (isSelected) {
-                                        androidx.compose.material3.ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .then(
+                                            if (isSelected)
+                                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                                            else Modifier
                                         )
-                                    } else {
-                                        androidx.compose.material3.ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    },
-                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("${minutes}m", fontSize = MaterialTheme.typography.labelSmall.fontSize)
+                                    Text(
+                                        "${minutes}m",
+                                        fontSize = MaterialTheme.typography.labelSmall.fontSize,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
                                 }
                             }
                         }

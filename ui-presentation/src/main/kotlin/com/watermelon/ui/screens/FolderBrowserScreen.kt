@@ -1,6 +1,7 @@
 package com.watermelon.ui.screens
 
 import androidx.compose.foundation.horizontalScroll
+import java.util.Collections
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -97,7 +98,7 @@ fun FolderBrowserScreen(
                 FolderSort.DATE       -> compareBy { it.displayName.lowercase() } // no backing field yet
                 FolderSort.RESOLUTION -> compareBy { it.displayName.lowercase() } // no backing field yet
             }
-            val nodeComparator = if (ascending) baseComparator else baseComparator.reversed()
+            val nodeComparator = if (ascending) baseComparator else Collections.reverseOrder(baseComparator)
             val folderComparator = Comparator<BrowserRow.Folder> { a, b -> nodeComparator.compare(a.node, b.node) }
 
             // Group contiguous Folder rows within each Header section and sort within group,

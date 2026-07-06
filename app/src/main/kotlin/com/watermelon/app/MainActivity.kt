@@ -426,6 +426,16 @@ class MainActivity : ComponentActivity() {
                 "size change: width=${newConfig.screenWidthDp}dp -> tier=$tier")
             // Update the action row to match the new size.
             setPictureInPictureParams(buildPiPParams(tier))
+        } else {
+            // The system has taken us OUT of PiP (user expanded back to full screen,
+            // or closed the PiP window). Without this, playbackMode stays stuck at PIP:
+            //  - onUserLeaveHint() would then force us straight back into PiP the next
+            //    time the app is backgrounded, even after the user explicitly expanded.
+            //  - onStop() would skip its normal teardown path, since it only tears down
+            //    the controller/connection when playbackMode == NORMAL.
+            com.watermelon.common.util.FileLogger.i("PiP",
+                "exited PiP — resetting playbackMode to NORMAL")
+            playbackMode = PlaybackMode.NORMAL
         }
     }
 

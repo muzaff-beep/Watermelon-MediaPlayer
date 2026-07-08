@@ -25,12 +25,16 @@ jobs:
       - name: Build & unit tests
         run: ./gradlew build test --continue
 
+      - name: Rename APK
+        if: always()
+        run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/WatermelonPlayer_Debug.apk
+
       - name: Upload debug APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: WatermelonPlayer_Debug
+          path: app/build/outputs/apk/debug/WatermelonPlayer_Debug.apk
           if-no-files-found: warn
 
       - name: Upload lint reports
@@ -77,3 +81,4 @@ jobs:
           api-level: 29
           arch: x86_64
           script: ./gradlew :library-storage:connectedCheck -Pandroid.testInstrumentationRunnerArguments.class=com.watermelon.storage.db.MigrationTest
+          

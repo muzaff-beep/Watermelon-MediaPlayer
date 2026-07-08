@@ -34,8 +34,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
-    debugImplementation(libs.androidx.compose.ui.tooling)
 
+    // Add Scaffold support for bottom navigation
+    implementation(libs.androidx.compose.material)
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

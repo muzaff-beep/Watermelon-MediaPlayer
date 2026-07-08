@@ -449,4 +449,53 @@ fun VideoListScreen(
                         modifier = Modifier.fillMaxSize().padding(WatermelonSpacing.sm),
                         horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm),
                         verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm)
-             
+                    ) {
+                        gridItems(sorted, key = { it.uri }) { item ->
+                            val isSelected = if (isMultiSelectMode) {
+                                item.uri in selectedItems
+                            } else {
+                                selection.contains(item.uri)
+                            }
+
+                            VideoListItem(
+                                item = item,
+                                itemSize = currentItemSize,
+                                isGrid = true,
+                                isScrollingFast = isScrolling,
+                                isSelected = isSelected,
+                                selectionActive = selection.isActive || isMultiSelectMode,
+                                onClick = {
+                                    if (isMultiSelectMode) {
+                                        selectedItems = if (item.uri in selectedItems) {
+                                            selectedItems - item.uri
+                                        } else {
+                                            selectedItems + item.uri
+                                        }
+                                    } else if (selection.isActive) {
+                                        viewModel.onToggleSelect(item.uri)
+                                    } else {
+                                        viewModel.markPlayed(item.uri)
+                                        PlaybackQueue.set(sorted.map { it.uri })
+                                        onVideoClick(item)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!isMultiSelectMode && !selection.isActive) {
+                                        isMultiSelectMode = true
+                                        selectedItems = setOf(item.uri)
+                                    } else {
+                                        viewModel.onLongPress(item.uri)
+                                    }
+                                },
+                                onContextMenuClick = {
+                                    contextMenuItem = item
+                                    showContextMenu = true
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

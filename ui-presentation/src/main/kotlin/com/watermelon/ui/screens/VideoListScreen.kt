@@ -119,7 +119,6 @@ fun VideoListScreen(
             viewModel.onDeleteConfirmed()
         }
     }
-
     LaunchedEffect(isRefreshing) {
         if (isRefreshing) {
             onRefresh()
@@ -433,4 +432,10 @@ fun VideoListScreen(
                 }
             },
             confirmButton = {
-                TextButton(onCl
+                TextButton(onClick = { showPlaylistPicker = false }) {
+                    Text("Cancel", color = WatermelonColors.DarkOnSurface)
+                }
+            }
+        )
+    }
+}

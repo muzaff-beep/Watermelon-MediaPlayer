@@ -452,4 +452,228 @@ class MainActivity : ComponentActivity() {
                 route = "videos/{folderPath}?isPlaylist={isPlaylist}",
                 arguments = listOf(
                     navArgument("folderPath") { type = NavType.StringType },
-                    navArgument("isPlk
+                    navArgument("isPlaylist") { type = NavType.BoolType; defaultValue = false }
+                )
+            ) { backStackEntry ->
+                val folderPath = Uri.decode(backStackEntry.arguments?.getString("folderPath").orEmpty())
+                val isPlaylist = backStackEntry.arguments?.getBoolean("isPlaylist") ?: false
+                val vm = remember(folderPath) {
+                    VideoListViewModel(mediaRepository, folderPath, playlistRepository, isPlaylist)
+                }
+                val playlists by playlistRepository.observeAll()
+                    .collectAsStateWithLifecycle(initialValue = emptyList())
+                VideoListScreen(
+                    viewModel = vm,
+                    onVideoClick = { item -> navController.navigate("player/${Uri.encode(item.uri)}") },
+                    availablePlaylists = playlists,
+                    folderName = if (isPlaylist) "Playlist" else folderPath.substringAfterLast("/"),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = "player/{uri}",
+                arguments = listOf(navArgument("uri") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val mediaUri = Uri.decode(backStackEntry.arguments?.getString("uri").orEmpty())
+                val controller = mediaController
+                val pbController = playbackController
+                if (controller == null || pbController == null) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Connecting…", style = MaterialTheme.typography.bodyLarge)
+                    }
+                } else {
+                    val vm = remember(pbController) { PlayerViewModel(pbController) }
+                    LaunchedEffect(mediaUri) { vm.onIntent(UserIntent.Play(mediaUri)) }
+
+                    var isFavourite by remember(mediaUri) { mutableStateOf(false) }
+                    LaunchedEffect(mediaUri) {
+                        isFavourite = runCatching { playlistRepository.isFavourite(mediaUri) }.getOrDefault(false)
+                    }
+
+                    val vhsController = com.watermelon.ui.player.rememberVhsEffectController(
+                        shaderProvider = { intensity, timeSec, w, h ->
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                VhsShader.build(
+                                    tier = VhsCapability.detectTier(this@MainActivity),
+                                    intensity = intensity, time = timeSec, width = w, height = h
+                                )
+                            } else null
+                        },
+                        reverseSound = { active, speed ->
+                            if (active) { vhsReverseSound.start(speed); vhsReverseSound.setSpeed(speed) }
+                            else vhsReverseSound.stop()
+                        }
+                    )
+                    val mappedIntensity = when (settingsState.vhsIntensity) {
+                        com.watermelon.ui.screens.VhsIntensity.OFF -> 0f
+                        com.watermelon.ui.screens.VhsIntensity.LOW -> 0.35f
+                        com.watermelon.ui.screens.VhsIntensity.MED -> 0.6f
+                        com.watermelon.ui.screens.VhsIntensity.HIGH -> 1f
+                    }
+                    PhonePlayerScreen(
+                        viewModel = vm,
+                        vhs = vhsController,
+                        vhsEnabled = settingsState.vhsEnabled,
+                        vhsIntensity = mappedIntensity,
+                        onBack = { navController.popBackStack() },
+                        durationMs = controller.duration.coerceAtLeast(0L),
+                        subtitleTrack = run {
+                            var track by remember(mediaUri) {
+                                mutableStateOf<com.watermelon.common.model.ParsedSubtitle?>(null)
+                            }
+                            LaunchedEffect(mediaUri) {
+                                track = discoverSubtitle(mediaUri)
+                            }
+                            track
+                        },
+                        uri = mediaUri,
+                        screenshotMode = settingsState.screenshotMode,
+                        initialBrightness = savedBrightness,
+                        onPipClick = {
+                            com.watermelon.common.util.FileLogger.i("PiP", "onPipClick tapped")
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                playbackMode = PlaybackMode.PIP
+                                enterPiPMode()
+                            }
+                        },
+                        onBackgroundClick = { enabled ->
+                            playbackMode = if (enabled) PlaybackMode.BACKGROUND else PlaybackMode.NORMAL
+                        },
+                        onBrightnessChange = { brightness ->
+                            prefs.edit().putFloat("brightness", brightness).apply()
+                        },
+                        onSkipToTrack = { newUri ->
+                            lifecycleScope.launch {
+                                runCatching { mediaRepository.markAsPlayed(newUri) }
+                            }
+                            navController.navigate("player/${Uri.encode(newUri)}") {
+                                popUpTo("player/{uri}") { inclusive = true }
+                            }
+                        },
+                        onLockChanged = { locked ->
+                            runCatching {
+                                if (locked) startLockTask() else stopLockTask()
+                            }.onFailure {
+                                com.watermelon.common.util.FileLogger.i("Lock", "lock task not available: ${it.message}")
+                            }
+                        },
+                        onShare = {
+                            val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "video/*"
+                                putExtra(android.content.Intent.EXTRA_STREAM, Uri.parse(mediaUri))
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            startActivity(android.content.Intent.createChooser(sendIntent, "Share video"))
+                        },
+                        isFavourite = isFavourite,
+                        onFavourite = { wantFavourite ->
+                            isFavourite = wantFavourite
+                            lifecycleScope.launch {
+                                val ok = runCatching {
+                                    if (wantFavourite) playlistRepository.addToFavourites(mediaUri)
+                                    else playlistRepository.removeFromFavourites(mediaUri)
+                                }.isSuccess
+                                if (!ok) isFavourite = !wantFavourite
+                            }
+                        },
+                        onAddToPlaylist = {
+                            lifecycleScope.launch { playlistRepository.addToFavourites(mediaUri) }
+                        },
+                        onDelete = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                val id = android.content.ContentUris.parseId(Uri.parse(mediaUri))
+                                val canonical = android.content.ContentUris.withAppendedId(
+                                    android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id
+                                )
+                                val sender = android.provider.MediaStore.createDeleteRequest(
+                                    contentResolver, listOf(canonical)
+                                ).intentSender
+                                startIntentSenderForResult(sender, 4001, null, 0, 0, 0)
+                                navController.popBackStack()
+                            }
+                        },
+                        surface = { modifier ->
+                            AndroidView(
+                                modifier = modifier,
+                                factory = { ctx ->
+                                    val view = android.view.LayoutInflater.from(ctx)
+                                        .inflate(R.layout.player_view_texture, null) as PlayerView
+                                    view.player = controller
+                                    view.useController = false
+                                    view
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    state = settingsState,
+                    onStateChange = { newState ->
+                        settingsState = newState
+                        prefs.edit()
+                            .putBoolean("vhs_enabled", newState.vhsEnabled)
+                            .putString("vhs_intensity", newState.vhsIntensity.name)
+                            .apply()
+                        if (newState.pureDark != pureDarkTheme) {
+                            onPureDarkThemeChange(newState.pureDark)
+                        }
+                    },
+                    onFolderVisibilityClick = { navController.navigate(Routes.FOLDER_VISIBILITY) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Routes.FOLDER_VISIBILITY) {
+                val vm = remember {
+                    FolderViewModel(folderRepository, mediaRepository, playlistRepository, settingsStore)
+                }
+                val folders by vm.allFoldersForSettings.collectAsStateWithLifecycle()
+                FolderVisibilityScreen(
+                    folders = folders
+                        .filter { !it.first.isPlaylist }
+                        .map { (node, visible) -> Triple(node.path, node.displayName, visible) },
+                    onToggle = { path, visible -> vm.setFolderHidden(path, !visible) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            // NEW: Design System route
+            composable(Routes.DESIGN_SYSTEM) {
+                DesignSystemScreen(onBack = { navController.popBackStack() })
+            }
+        }
+    }
+
+    private suspend fun discoverSubtitle(uri: String): com.watermelon.common.model.ParsedSubtitle? {
+        val item = runCatching { mediaRepository.getByUri(uri) }.getOrNull() ?: return null
+        return subtitleRepository.parsedFor(
+            mediaItem = item,
+            preferredLanguages = listOf("fa", "ar", "ur", "ku", "en")
+        )
+    }
+
+    @Composable
+    private fun PermissionPrompt(onRequest: () -> Unit) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Text(
+                    "Watermelon needs access to your videos to build the library.",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Button(onClick = onRequest) { Text("Grant access") }
+            }
+        }
+    }
+
+    private object Routes {
+        const val FOLDERS = "folders"
+        const val SETTINGS = "settings"
+        const val FOLDER_VISIBILITY = "folder_visibility"
+        const val DESIGN_SYSTEM = "design_system"  // NEW
+    }
+
+    private enum class PiPTier { SMALL, MID, EXPANDED }

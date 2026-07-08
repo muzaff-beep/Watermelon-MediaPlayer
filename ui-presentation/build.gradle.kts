@@ -19,7 +19,7 @@ android {
 dependencies {
     implementation(project(":common-interfaces"))
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material3)  // Scaffold is included here
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
@@ -34,9 +34,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
-
-    // Add Scaffold support for bottom navigation
-    implementation(libs.androidx.compose.material)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

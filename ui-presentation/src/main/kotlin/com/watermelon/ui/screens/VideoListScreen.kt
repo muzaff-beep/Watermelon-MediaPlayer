@@ -3,7 +3,6 @@ package com.watermelon.ui.screens
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +28,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -56,10 +57,14 @@ import com.watermelon.common.model.Playlist
 import com.watermelon.ui.R
 import com.watermelon.ui.WatermelonIcons
 import com.watermelon.ui.components.LabeledIconButton
+import com.watermelon.ui.components.MultiSelectionDock
 import com.watermelon.ui.components.StatusBadge
+import com.watermelon.ui.components.VideoContextMenu
+import com.watermelon.ui.components.VideoListItem
 import com.watermelon.ui.components.VelocityGuardImage
-import com.watermelon.ui.components.VideoSelectionBar
+import com.watermelon.ui.components.WatermelonHeader
 import com.watermelon.ui.components.WatermelonLoadingAnimation
+import com.watermelon.ui.theme.WatermelonColors
 import com.watermelon.ui.theme.WatermelonShapes
 import com.watermelon.ui.theme.WatermelonSpacing
 import com.watermelon.ui.theme.WatermelonTypography
@@ -70,18 +75,21 @@ private enum class VideoSort(val label: String) {
     NAME("Name"), DATE("Date"), DURATION("Duration"),
     FILE_TYPE("File Type"), SIZE("Size"), QUALITY("Quality"), CUSTOM("Custom")
 }
+
 private enum class VideoLayout { LIST, GRID }
 
 private val LayoutSaver = androidx.compose.runtime.saveable.Saver<VideoLayout, String>(
-    save    = { it.name },
+    save = { it.name },
     restore = { VideoLayout.valueOf(it) }
 )
+
 private val SortSaver2 = androidx.compose.runtime.saveable.Saver<VideoSort, String>(
-    save    = { it.name },
+    save = { it.name },
     restore = { VideoSort.valueOf(it) }
 )
+
 private val SizeSaver2 = androidx.compose.runtime.saveable.Saver<ItemSize, String>(
-    save    = { it.name },
+    save = { it.name },
     restore = { ItemSize.valueOf(it) }
 )
 
@@ -92,19 +100,30 @@ fun VideoListScreen(
     onVideoClick: (MediaItem) -> Unit,
     onRefresh: () -> Unit = {},
     availablePlaylists: List<Playlist> = emptyList(),
+    folderName: String = "Videos",
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val context     = LocalContext.current
-    val videos      by viewModel.videos.collectAsStateWithLifecycle()
-    val selection   by viewModel.selection.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val videos by viewModel.videos.collectAsStateWithLifecycle()
+    val selection by viewModel.selection.collectAsStateWithLifecycle()
 
-    var currentSort     by rememberSaveable(stateSaver = SortSaver2)  { mutableStateOf(VideoSort.NAME) }
-    var ascending       by rememberSaveable { mutableStateOf(true) }
-    var currentItemSize by rememberSaveable(stateSaver = SizeSaver2)  { mutableStateOf(ItemSize.MEDIUM) }
-    var currentLayout   by rememberSaveable(stateSaver = LayoutSaver) { mutableStateOf(VideoLayout.LIST) }
-    var sortMenuOpen    by remember { mutableStateOf(false) }
-    var isRefreshing    by remember { mutableStateOf(false) }
-    var showDeleteDialog     by remember { mutableStateOf(false) }
+    var currentSort by rememberSaveable(stateSaver = SortSaver2) { mutableStateOf(VideoSort.NAME) }
+    var ascending by rememberSaveable { mutableStateOf(true) }
+    var currentItemSize by rememberSaveable(stateSaver = SizeSaver2) { mutableStateOf(ItemSize.MEDIUM) }
+    var currentLayout by rememberSaveable(stateSaver = LayoutSaver) { mutableStateOf(VideoLayout.LIST) }
+    var sortMenuOpen by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showPlaylistPicker by remember { mutableStateOf(false) }
+
+    // Multi-selection state
+    var isMultiSelectMode by remember { mutableStateOf(false) }
+    var selectedItems by remember { mutableStateOf(setOf<String>()) }
+
+    // Context menu state
+    var contextMenuItem by remember { mutableStateOf<MediaItem?>(null) }
+    var showContextMenu by remember { mutableStateOf(false) }
 
     // Launcher for the MediaStore delete-consent dialog (scoped storage, API 30+).
     val deleteLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -114,54 +133,53 @@ fun VideoListScreen(
             viewModel.onDeleteConfirmed()
         }
     }
-    var showPlaylistPicker   by remember { mutableStateOf(false) }
 
     LaunchedEffect(isRefreshing) {
         if (isRefreshing) { onRefresh(); delay(2_000); isRefreshing = false }
     }
 
     val sorted = remember(videos, currentSort, ascending) {
-        // CUSTOM preserves the order the source flow already provides (drag-reorder from
-        // the repository in Phase A / E5); we don't re-sort it here.
         if (currentSort == VideoSort.CUSTOM) {
             videos
         } else {
             val cmp: Comparator<MediaItem> = when (currentSort) {
-                VideoSort.NAME      -> compareBy { it.displayName.lowercase() }
-                VideoSort.DATE      -> compareByDescending { if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt }
-                VideoSort.DURATION  -> compareByDescending { it.durationMs }
+                VideoSort.NAME -> compareBy { it.displayName.lowercase() }
+                VideoSort.DATE -> compareByDescending { if (it.dateAdded > 0L) it.dateAdded else it.firstSeenAt }
+                VideoSort.DURATION -> compareByDescending { it.durationMs }
                 VideoSort.FILE_TYPE -> compareBy { it.fileExtension.lowercase() }
-                VideoSort.SIZE      -> compareByDescending { it.fileSize }
-                VideoSort.QUALITY   -> compareByDescending { it.pixelCount }
-                VideoSort.CUSTOM    -> compareBy { 0 } // unreachable
+                VideoSort.SIZE -> compareByDescending { it.fileSize }
+                VideoSort.QUALITY -> compareByDescending { it.pixelCount }
+                VideoSort.CUSTOM -> compareBy { 0 }
             }
             videos.sortedWith(if (ascending) cmp else Comparator { a, b -> cmp.compare(b, a) })
         }
     }
 
-    val listState   = rememberLazyListState()
-    val gridState   = rememberLazyGridState()
-    val isGrid      = currentLayout == VideoLayout.GRID
-    val isScrolling by remember { derivedStateOf { listState.isScrollInProgress || gridState.isScrollInProgress } }
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+    val isGrid = currentLayout == VideoLayout.GRID
+    val isScrolling by remember {
+        derivedStateOf { listState.isScrollInProgress || gridState.isScrollInProgress }
+    }
 
-    // Scroll to top whenever the sort or direction changes (issue 5).
+    // Scroll to top whenever the sort or direction changes
     LaunchedEffect(currentSort, ascending) {
         runCatching { listState.scrollToItem(0) }
         runCatching { gridState.scrollToItem(0) }
     }
 
     val gridColumns = when (currentItemSize) {
-        ItemSize.SMALL  -> GridCells.Fixed(3)
+        ItemSize.SMALL -> GridCells.Fixed(3)
         ItemSize.MEDIUM -> GridCells.Fixed(2)
-        ItemSize.LARGE  -> GridCells.Fixed(2)
+        ItemSize.LARGE -> GridCells.Fixed(2)
     }
 
     // Delete confirmation dialog
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title   = { Text("Delete ${selection.count} video(s)?") },
-            text    = { Text("This will permanently delete the selected files from your device.") },
+            title = { Text("Delete ${if (isMultiSelectMode) selectedItems.size else 1} video(s)?") },
+            text = { Text("This will permanently delete the selected files from your device.") },
             confirmButton = {
                 TextButton(onClick = {
                     val sender = viewModel.buildDeleteRequest(context.contentResolver)
@@ -184,14 +202,20 @@ fun VideoListScreen(
         AlertDialog(
             onDismissRequest = { showPlaylistPicker = false },
             title = { Text("Add to playlist") },
-            text  = {
+            text = {
                 Column {
                     availablePlaylists.filter {
                         it.type == com.watermelon.common.model.PlaylistType.USER
                     }.forEach { playlist ->
                         TextButton(
                             onClick = {
-                                viewModel.addSelectedToPlaylist(playlist.id)
+                                if (isMultiSelectMode) {
+                                    selectedItems.forEach { uri ->
+                                        viewModel.addToPlaylist(playlist.id, uri)
+                                    }
+                                } else {
+                                    viewModel.addToPlaylist(playlist.id, contextMenuItem?.uri ?: "")
+                                }
                                 showPlaylistPicker = false
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -212,27 +236,93 @@ fun VideoListScreen(
         )
     }
 
+    // Context menu
+    if (showContextMenu && contextMenuItem != null) {
+        VideoContextMenu(
+            onPlay = {
+                viewModel.markPlayed(contextMenuItem!!.uri)
+                PlaybackQueue.set(listOf(contextMenuItem!!.uri))
+                onVideoClick(contextMenuItem!!)
+                showContextMenu = false
+            },
+            onPlayNext = {
+                viewModel.addToQueue(contextMenuItem!!.uri)
+                showContextMenu = false
+            },
+            onAddToPlaylist = {
+                showPlaylistPicker = true
+                showContextMenu = false
+            },
+            onAddToFavorites = {
+                viewModel.addToFavourites(contextMenuItem!!.uri)
+                showContextMenu = false
+            },
+            onShare = {
+                val intent = Intent.createChooser(
+                    viewModel.buildShareIntent(contextMenuItem!!.uri),
+                    "Share video"
+                )
+                context.startActivity(intent)
+                showContextMenu = false
+            },
+            onDelete = {
+                if (isMultiSelectMode) {
+                    showDeleteDialog = true
+                } else {
+                    viewModel.selectItem(contextMenuItem!!.uri)
+                    showDeleteDialog = true
+                }
+                showContextMenu = false
+            },
+            onRename = {
+                // TODO: Implement rename
+                showContextMenu = false
+            },
+            onProperties = {
+                // TODO: Implement properties
+                showContextMenu = false
+            },
+            modifier = Modifier.align(Alignment.TopEnd)
+        )
+    }
+
     Scaffold(
         modifier = modifier,
+        topBar = {
+            WatermelonHeader(
+                title = folderName,
+                showBackButton = true,
+                onBackClick = onBack,
+                showSettingsButton = false
+            )
+        },
         bottomBar = {
-            if (selection.isActive) {
-                VideoSelectionBar(
-                    selectedCount     = selection.count,
+            // Use MultiSelectionDock when in multi-select mode
+            if (isMultiSelectMode) {
+                MultiSelectionDock(
+                    selectedCount = selectedItems.size,
+                    onDeselectAll = {
+                        selectedItems = emptySet()
+                        isMultiSelectMode = false
+                    },
+                    onDelete = {
+                        showDeleteDialog = true
+                    },
+                    onAddToPlaylist = {
+                        showPlaylistPicker = true
+                    },
                     onShare = {
                         val intent = viewModel.buildShareIntent()
                         context.startActivity(Intent.createChooser(intent, "Share videos"))
-                        viewModel.clearSelection()
                     },
-                    onDelete          = { showDeleteDialog = true },
-                    onAddToPlaylist   = { showPlaylistPicker = true },
-                    onAddToFavourites = { viewModel.addSelectedToFavourites() }
+                    visible = isMultiSelectMode
                 )
             }
         }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
 
-            // ── Toolbar ───────────────────────────────────────────────────────
+            // Toolbar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -240,61 +330,60 @@ fun VideoListScreen(
                     .padding(horizontal = WatermelonSpacing.sm, vertical = WatermelonSpacing.xs),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (selection.isActive) {
-                    // Selection mode toolbar
+                if (selection.isActive && !isMultiSelectMode) {
                     TextButton(onClick = { viewModel.selectAll() }) { Text("Select all") }
-                    TextButton(onClick = { viewModel.clearSelection() }) { Text("Cancel") }
-                } else {
-                    // Normal toolbar
+                    TextButton(onClick = {
+                        viewModel.clearSelection()
+                        isMultiSelectMode = false
+                        selectedItems = emptySet()
+                    }) { Text("Cancel") }
+                } else if (!isMultiSelectMode) {
                     LabeledIconButton(
-                        icon    = if (isGrid) WatermelonIcons.ViewList else WatermelonIcons.ViewGrid,
-                        label   = if (isGrid) "List" else "Grid",
+                        icon = if (isGrid) WatermelonIcons.ViewList else WatermelonIcons.ViewGrid,
+                        label = if (isGrid) "List" else "Grid",
                         onClick = { currentLayout = if (isGrid) VideoLayout.LIST else VideoLayout.GRID }
                     )
                     Box {
                         LabeledIconButton(
-                            icon    = WatermelonIcons.Sort,
-                            label   = "Sort: ${currentSort.label}",
+                            icon = WatermelonIcons.Sort,
+                            label = "Sort: ${currentSort.label}",
                             onClick = { sortMenuOpen = true }
                         )
                         DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
                             VideoSort.values().forEach { opt ->
                                 DropdownMenuItem(
-                                    text    = { Text(opt.label) },
+                                    text = { Text(opt.label) },
                                     onClick = { currentSort = opt; sortMenuOpen = false }
                                 )
                             }
                         }
                     }
                     LabeledIconButton(
-                        icon    = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
-                        label   = if (ascending) "Ascending" else "Descending",
+                        icon = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
+                        label = if (ascending) "Ascending" else "Descending",
                         onClick = { ascending = !ascending }
                     )
                     ItemSize.values().forEach { size ->
                         LabeledIconButton(
-                            icon    = when (size) {
-                                ItemSize.SMALL  -> R.drawable.ic_size_small
+                            icon = when (size) {
+                                ItemSize.SMALL -> R.drawable.ic_size_small
                                 ItemSize.MEDIUM -> R.drawable.ic_size_medium
-                                ItemSize.LARGE  -> R.drawable.ic_size_large
+                                ItemSize.LARGE -> R.drawable.ic_size_large
                             },
-                            label   = size.label,
-                            active  = size == currentItemSize,
+                            label = size.label,
+                            active = size == currentItemSize,
                             onClick = { currentItemSize = size }
                         )
                     }
                 }
             }
 
-            // Deliberate spec separator: hairline thickness, low-alpha outline, no inset —
-            // matches the "thin separators, grid precision" requirement rather than
-            // Material3's default divider treatment.
             HorizontalDivider(
                 thickness = WatermelonSpacing.hairline,
                 color = MaterialTheme.colorScheme.outline
             )
 
-            // ── Content ───────────────────────────────────────────────────────
+            // Content
             if (sorted.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     WatermelonLoadingAnimation(modifier = Modifier.size(160.dp))
@@ -305,165 +394,59 @@ fun VideoListScreen(
             PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { isRefreshing = true }) {
                 when (currentLayout) {
                     VideoLayout.LIST -> LazyColumn(
-                        state   = listState,
+                        state = listState,
                         modifier = Modifier.fillMaxSize().padding(horizontal = WatermelonSpacing.sm),
                         verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs / 2)
                     ) {
                         items(sorted, key = { it.uri }) { item ->
+                            val isSelected = if (isMultiSelectMode) {
+                                item.uri in selectedItems
+                            } else {
+                                selection.contains(item.uri)
+                            }
+
                             VideoListItem(
-                                item            = item,
-                                itemSize        = currentItemSize,
-                                isGrid          = false,
+                                item = item,
+                                itemSize = currentItemSize,
+                                isGrid = false,
                                 isScrollingFast = isScrolling,
-                                isSelected      = selection.contains(item.uri),
-                                selectionActive = selection.isActive,
-                                onClick         = {
-                                    if (selection.isActive) {
+                                isSelected = isSelected,
+                                selectionActive = selection.isActive || isMultiSelectMode,
+                                onClick = {
+                                    if (isMultiSelectMode) {
+                                        selectedItems = if (item.uri in selectedItems) {
+                                            selectedItems - item.uri
+                                        } else {
+                                            selectedItems + item.uri
+                                        }
+                                    } else if (selection.isActive) {
                                         viewModel.onToggleSelect(item.uri)
                                     } else {
                                         viewModel.markPlayed(item.uri)
-                                        com.watermelon.ui.screens.PlaybackQueue.set(sorted.map { it.uri })
+                                        PlaybackQueue.set(sorted.map { it.uri })
                                         onVideoClick(item)
                                     }
                                 },
-                                onLongClick     = { viewModel.onLongPress(item.uri) }
+                                onLongClick = {
+                                    if (!isMultiSelectMode && !selection.isActive) {
+                                        isMultiSelectMode = true
+                                        selectedItems = setOf(item.uri)
+                                    } else {
+                                        viewModel.onLongPress(item.uri)
+                                    }
+                                },
+                                onContextMenuClick = {
+                                    contextMenuItem = item
+                                    showContextMenu = true
+                                }
                             )
                         }
                     }
 
                     VideoLayout.GRID -> LazyVerticalGrid(
-                        state   = gridState,
+                        state = gridState,
                         columns = gridColumns,
                         modifier = Modifier.fillMaxSize().padding(WatermelonSpacing.sm),
                         horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm),
-                        verticalArrangement   = Arrangement.spacedBy(WatermelonSpacing.sm)
-                    ) {
-                        gridItems(sorted, key = { it.uri }) { item ->
-                            VideoListItem(
-                                item            = item,
-                                itemSize        = currentItemSize,
-                                isGrid          = true,
-                                isScrollingFast = isScrolling,
-                                isSelected      = selection.contains(item.uri),
-                                selectionActive = selection.isActive,
-                                onClick         = {
-                                    if (selection.isActive) {
-                                        viewModel.onToggleSelect(item.uri)
-                                    } else {
-                                        viewModel.markPlayed(item.uri)
-                                        com.watermelon.ui.screens.PlaybackQueue.set(sorted.map { it.uri })
-                                        onVideoClick(item)
-                                    }
-                                },
-                                onLongClick     = { viewModel.onLongPress(item.uri) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── Video item ────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun VideoListItem(
-    item: MediaItem,
-    itemSize: ItemSize,
-    isGrid: Boolean,
-    isScrollingFast: Boolean,
-    isSelected: Boolean,
-    selectionActive: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
-) {
-    val thumbH: Dp = when (itemSize) {
-        ItemSize.SMALL  -> if (isGrid) 72.dp  else 40.dp
-        ItemSize.MEDIUM -> if (isGrid) 120.dp else 64.dp
-        ItemSize.LARGE  -> if (isGrid) 180.dp else 96.dp
-    }
-    val textStyle = when (itemSize) {
-        ItemSize.SMALL  -> MaterialTheme.typography.bodySmall
-        ItemSize.MEDIUM -> MaterialTheme.typography.bodyMedium
-        ItemSize.LARGE  -> MaterialTheme.typography.bodyLarge
-    }
-    val selectedBorder = if (isSelected)
-        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, WatermelonShapes.control)
-    else Modifier
-
-    val clickModifier = Modifier
-        .clip(WatermelonShapes.control)
-        .then(selectedBorder)
-        .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-
-    if (isGrid) {
-        Column(
-            modifier = clickModifier.padding(WatermelonSpacing.xs),
-            verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs)
-        ) {
-            VelocityGuardImage(
-                uri             = item.uri,
-                durationMs      = item.durationMs,
-                isScrollingFast = isScrollingFast,
-                modifier        = Modifier.fillMaxWidth().height(thumbH).clip(WatermelonShapes.small)
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text     = item.displayName,
-                    style    = textStyle,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                if (item.lastPlayedAt == null) {
-                    StatusBadge.New(compact = true)
-                }
-            }
-        }
-    } else {
-        Row(
-            modifier = clickModifier
-                .fillMaxWidth()
-                .padding(horizontal = WatermelonSpacing.sm, vertical = WatermelonSpacing.xs),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-            VelocityGuardImage(
-                uri             = item.uri,
-                durationMs      = item.durationMs,
-                isScrollingFast = isScrollingFast,
-                modifier        = Modifier
-                    .width(thumbH * 16f / 9f)
-                    .height(thumbH)
-                    .clip(WatermelonShapes.small)
-            )
-            Spacer(Modifier.width(WatermelonSpacing.md))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text     = item.displayName,
-                        style    = textStyle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (item.lastPlayedAt == null) {
-                        StatusBadge.New(modifier = Modifier.padding(start = WatermelonSpacing.xs))
-                    }
-                }
-                Text(
-                    text  = formatDuration(item.durationMs),
-                    style = WatermelonTypography.timecode,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-private fun formatDuration(ms: Long): String {
-    val s = (ms / 1000).coerceAtLeast(0)
-    val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
-}
+                        verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm)
+             

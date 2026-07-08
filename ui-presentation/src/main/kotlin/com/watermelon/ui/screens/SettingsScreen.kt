@@ -1,5 +1,6 @@
 package com.watermelon.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
@@ -35,16 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.watermelon.ui.components.WatermelonHeader
 import com.watermelon.ui.theme.WatermelonColors
+import com.watermelon.ui.theme.WatermelonShapes
 import com.watermelon.ui.theme.WatermelonSpacing
 import com.watermelon.ui.theme.WatermelonTypography
 
-/**
- * Settings screen. Stateless over [SettingsState] + change callbacks — the host binds to
- * DataStore. Layout matches wireframe #6: a titled header, then grouped "cards", each with
- * a small colored eyebrow label above it. Folder visibility is a navigation row.
- *
- * This is a LAYOUT rebuild only — SettingsState and all callbacks are unchanged.
- */
 data class SettingsState(
     val pureDark: Boolean = true,
     val forcedRtl: Boolean = false,
@@ -62,8 +58,6 @@ data class SettingsState(
 )
 
 enum class VhsIntensity { OFF, LOW, MED, HIGH }
-
-/** Controls whether the screenshot button captures one frame or a burst of nine. */
 enum class ScreenshotMode { SINGLE, BURST }
 
 @Composable
@@ -75,7 +69,6 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        // Header with logo and branding
         WatermelonHeader(
             title = "Settings",
             showBackButton = true,
@@ -93,7 +86,6 @@ fun SettingsScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.md)
         ) {
-            // ── Appearance ──────────────────────────────────────────────────────
             item {
                 SettingsGroup("APPEARANCE") {
                     ToggleRow("Pure dark theme", state.pureDark) {
@@ -105,7 +97,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ── View defaults ───────────────────────────────────────────────────
             item {
                 SettingsGroup("VIEW DEFAULTS") {
                     ToggleRow("Grid layout by default", state.gridDefault) {
@@ -123,7 +114,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ── Player ──────────────────────────────────────────────────────────
             item {
                 SettingsGroup("PLAYER") {
                     ToggleRow(
@@ -151,7 +141,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ── Subtitles ────────────────────────────────────────────────────────
             item {
                 SettingsGroup("SUBTITLES") {
                     val st = state.subtitleStyle
@@ -207,7 +196,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ── System ──────────────────────────────────────────────────────────
             item {
                 SettingsGroup("SYSTEM") {
                     ToggleRow("Memory-safety (force Tier B)", state.memorySafety) {
@@ -228,7 +216,6 @@ fun SettingsScreen(
     }
 }
 
-/** A titled card group: small colored eyebrow label, then a rounded surface of rows. */
 @Composable
 private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs)) {
@@ -240,7 +227,7 @@ private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
             modifier = Modifier.padding(start = WatermelonSpacing.xs)
         )
         Surface(
-            shape = RoundedCornerShape(WatermelonSpacing.control),
+            shape = RoundedCornerShape(WatermelonShapes.control),
             color = WatermelonColors.DarkSurface,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -277,12 +264,16 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
         Switch(
             checked = checked,
             onCheckedChange = null,
-            colors = MaterialTheme.colorScheme.primary
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = WatermelonColors.Accent,
+                checkedTrackColor = WatermelonColors.Accent.copy(alpha = 0.5f),
+                uncheckedThumbColor = WatermelonColors.DarkOnSurfaceVariant,
+                uncheckedTrackColor = WatermelonColors.DarkSurface
+            )
         )
     }
 }
 
-/** A row that shows a value and opens a dropdown menu of [options] on tap. */
 @Composable
 private fun NavRow(
     label: String,
@@ -324,11 +315,13 @@ private fun NavRow(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(
-                        option,
-                        style = WatermelonTypography.typography.bodyMedium,
-                        color = WatermelonColors.DarkOnSurface
-                    ) },
+                    text = {
+                        Text(
+                            option,
+                            style = WatermelonTypography.typography.bodyMedium,
+                            color = WatermelonColors.DarkOnSurface
+                        )
+                    },
                     onClick = {
                         onSelect(option)
                         expanded = false
@@ -339,7 +332,6 @@ private fun NavRow(
     }
 }
 
-/** A navigation-only row (no dropdown) — used for links like "Folder visibility". */
 @Composable
 private fun NavRow(label: String, value: String, onClick: () -> Unit, accent: Boolean = false) {
     Row(
@@ -365,11 +357,6 @@ private fun NavRow(label: String, value: String, onClick: () -> Unit, accent: Bo
     }
 }
 
-// Add missing import for clickable
-import androidx.compose.foundation.clickable
-
-// ── Subtitle settings helpers ───────────────────────────────────────────────
-
 private val SUBTITLE_COLORS = listOf(
     0xFFFFFFFF to "White", 0xFFFFEB3B to "Yellow", 0xFF00E5FF to "Cyan",
     0xFF69F0AE to "Green", 0xFFFF8A80 to "Coral", 0xFF000000 to "Black"
@@ -384,7 +371,6 @@ private fun com.watermelon.common.model.SubtitleDirection.label(): String = when
     com.watermelon.common.model.SubtitleDirection.FORCE_LTR -> "Force LTR"
 }
 
-/** Row with -/+ steppers for numerical values. */
 @Composable
 private fun StepperRow(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
     Row(

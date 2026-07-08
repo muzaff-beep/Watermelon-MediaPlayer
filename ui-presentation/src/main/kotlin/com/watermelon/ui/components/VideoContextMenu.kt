@@ -2,13 +2,11 @@ package com.watermelon.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.watermelon.ui.R
 import com.watermelon.ui.theme.WatermelonColors
@@ -37,7 +34,6 @@ import com.watermelon.ui.theme.WatermelonTypography
 
 /**
  * Context menu for video items.
- * Implements the "Context menus" requirement from the UI Design System.
  */
 @Composable
 fun VideoContextMenu(
@@ -54,12 +50,12 @@ fun VideoContextMenu(
     var expanded by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
-        IconButton(
+        androidx.compose.material3.IconButton(
             onClick = { expanded = true },
             modifier = Modifier.size(40.dp)
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_more_vert),
+                painter = painterResource(R.drawable.ic_more_vertical),
                 contentDescription = "More options",
                 tint = WatermelonColors.DarkOnSurface
             )
@@ -75,46 +71,31 @@ fun VideoContextMenu(
             ContextMenuItem(
                 iconRes = R.drawable.ic_play_arrow,
                 text = "Play",
-                onClick = {
-                    onPlay()
-                    expanded = false
-                }
+                onClick = { onPlay(); expanded = false }
             )
 
             ContextMenuItem(
-                iconRes = R.drawable.ic_play_next,
+                iconRes = R.drawable.ic_queue_next,
                 text = "Play next",
-                onClick = {
-                    onPlayNext()
-                    expanded = false
-                }
+                onClick = { onPlayNext(); expanded = false }
             )
 
             ContextMenuItem(
                 iconRes = R.drawable.ic_playlist_add,
                 text = "Add to playlist",
-                onClick = {
-                    onAddToPlaylist()
-                    expanded = false
-                }
+                onClick = { onAddToPlaylist(); expanded = false }
             )
 
             ContextMenuItem(
-                iconRes = R.drawable.ic_star_outline,
+                iconRes = R.drawable.ic_star_off,
                 text = "Add to favorites",
-                onClick = {
-                    onAddToFavorites()
-                    expanded = false
-                }
+                onClick = { onAddToFavorites(); expanded = false }
             )
 
             ContextMenuItem(
                 iconRes = R.drawable.ic_share,
                 text = "Share",
-                onClick = {
-                    onShare()
-                    expanded = false
-                }
+                onClick = { onShare(); expanded = false }
             )
 
             DropdownMenuItem(
@@ -125,10 +106,7 @@ fun VideoContextMenu(
                         color = WatermelonColors.Error
                     )
                 },
-                onClick = {
-                    onDelete()
-                    expanded = false
-                },
+                onClick = { onDelete(); expanded = false },
                 leadingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_delete),
@@ -141,19 +119,13 @@ fun VideoContextMenu(
             ContextMenuItem(
                 iconRes = R.drawable.ic_edit,
                 text = "Rename",
-                onClick = {
-                    onRename()
-                    expanded = false
-                }
+                onClick = { onRename(); expanded = false }
             )
 
             ContextMenuItem(
                 iconRes = R.drawable.ic_info,
                 text = "Properties",
-                onClick = {
-                    onProperties()
-                    expanded = false
-                }
+                onClick = { onProperties(); expanded = false }
             )
         }
     }
@@ -184,39 +156,5 @@ private fun ContextMenuItem(
             )
         },
         modifier = modifier
-    )
-}
-
-@Composable
-fun IconButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .size(40.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_more_vert),
-            contentDescription = "More options",
-            tint = WatermelonColors.DarkOnSurface
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun VideoContextMenuPreview() {
-    VideoContextMenu(
-        onPlay = {},
-        onPlayNext = {},
-        onAddToPlaylist = {},
-        onAddToFavorites = {},
-        onShare = {},
-        onDelete = {},
-        onRename = {},
-        onProperties = {}
     )
 }

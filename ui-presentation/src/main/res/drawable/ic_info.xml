@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
-    android:viewportHeight="24"
-    android:tint="?attr/colorControlNormal">
+    android:viewportHeight="24">
     <path
-        android:fillColor="@android:color/white"
-        android:pathData="M11,17h2v-6h-2ZM12,9q0.425,0 0.713,-0.288Q13,8.425 13,8q0,-0.425 -0.287,-0.713Q12.425,7 12,7q-0.425,0 -0.712,0.287Q11,7.575 11,8q0,0.425 0.288,0.712Q11.575,9 12,9ZM12,22q-2.075,0 -3.9,-0.787 -1.825,-0.788 -3.175,-2.138 -1.35,-1.35 -2.137,-3.175Q2,14.075 2,12q0,-2.075 0.788,-3.9 0.787,-1.825 2.137,-3.175 1.35,-1.35 3.175,-2.137Q9.925,2 12,2q2.075,0 3.9,0.787 1.825,0.788 3.175,2.138 1.35,1.35 2.137,3.175Q22,9.925 22,12q0,2.075 -0.788,3.9 -0.787,1.825 -2.137,3.175 -1.35,1.35 -3.175,2.137Q14.075,22 12,22Z"/>
+        android:pathData="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z M13,17 L11,17 L11,11 L13,11 L13,17 Z M13,9 L11,9 L11,7 L13,7 L13,9 Z"
+        android:fillColor="#FF000000"
+        android:fillType="nonZero"/>
 </vector>

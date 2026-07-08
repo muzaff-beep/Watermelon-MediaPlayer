@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z M12,20 C7.59,20 4,16.41 4,12 C4,7.59 7.59,4 12,4 C16.41,4 20,7.59 20,12 C20,16.41 16.41,20 12,20 Z"
+        android:fillType="nonZero"/>
+    <path
+        android:pathData="M12,17 C9.24,17 7,14.76 7,12 C7,9.24 9.24,7 12,7 C14.76,7 17,9.24 17,12 C17,14.76 14.76,17 12,17 Z M12,9 C10.34,9 9,10.34 9,12 C9,13.66 10.34,15 12,15 C13.66,15 15,13.66 15,12 C15,10.34 13.66,9 12,9 Z"
+        android:fillType="nonZero"/>
+    <path
+        android:pathData="M12.8,11 C12.8,11.4418 12.4418,11.8 12,11.8 C11.5582,11.8 11.2,11.4418 11.2,11 C11.2,10.5582 11.5582,10.2 12,10.2 C12.4418,10.2 12.8,10.5582 12.8,11 Z"
+        android:fillType="nonZero"/>
+    <path
+        android:pathData="M11.3,13 C11.3,13.4418 10.9418,13.8 10.5,13.8 C10.0582,13.8 9.7,13.4418 9.7,13 C9.7,12.5582 10.0582,12.2 10.5,12.2 C10.9418,12.2 11.3,12.5582 11.3,13 Z"
+        android:fillType="nonZero"/>
+    <path
+        android:pathData="M14.3,13 C14.3,13.4418 13.9418,13.8 13.5,13.8 C13.0582,13.8 12.7,13.4418 12.7,13 C12.7,12.5582 13.0582,12.2 13.5,12.2 C13.9418,12.2 14.3,12.5582 14.3,13 Z"
+        android:fillType="nonZero"/>
+</vector>

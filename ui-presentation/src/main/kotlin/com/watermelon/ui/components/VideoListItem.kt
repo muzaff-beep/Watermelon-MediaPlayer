@@ -149,7 +149,7 @@ fun VideoListItem(
                         Icon(
                             painter = painterResource(R.drawable.ic_play_arrow),
                             contentDescription = "Play",
-                            tint = WatermelonColors.PaperWhite.copy(alpha = 0.8f)
+                            tint = WatermelonColors.Palette.PaperWhite.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -199,3 +199,5 @@ private fun formatDuration(ms: Long): String {
     val h = s / 3600
     val m = (s % 3600) / 60
     val sec = s % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+}

@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.toggleable
@@ -30,7 +33,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
+import com.watermelon.ui.components.WatermelonHeader
+import com.watermelon.ui.theme.WatermelonColors
+import com.watermelon.ui.theme.WatermelonSpacing
+import com.watermelon.ui.theme.WatermelonTypography
 
 /**
  * Settings screen. Stateless over [SettingsState] + change callbacks — the host binds to
@@ -40,16 +46,16 @@ import androidx.compose.foundation.clickable
  * This is a LAYOUT rebuild only — SettingsState and all callbacks are unchanged.
  */
 data class SettingsState(
-    val pureDark: Boolean            = true,
-    val forcedRtl: Boolean           = false,
-    val gridDefault: Boolean         = false,
-    val showThumbnails: Boolean      = true,
-    val showDurations: Boolean       = true,
-    val showFileSize: Boolean        = false,
-    val vhsEnabled: Boolean          = true,
-    val vhsIntensity: VhsIntensity   = VhsIntensity.MED,
-    val memorySafety: Boolean        = false,
-    val fullFolderAccess: Boolean    = false,
+    val pureDark: Boolean = true,
+    val forcedRtl: Boolean = false,
+    val gridDefault: Boolean = false,
+    val showThumbnails: Boolean = true,
+    val showDurations: Boolean = true,
+    val showFileSize: Boolean = false,
+    val vhsEnabled: Boolean = true,
+    val vhsIntensity: VhsIntensity = VhsIntensity.MED,
+    val memorySafety: Boolean = false,
+    val fullFolderAccess: Boolean = false,
     val screenshotMode: ScreenshotMode = ScreenshotMode.SINGLE,
     val folderVisibility: Map<String, Boolean> = emptyMap(),
     val subtitleStyle: com.watermelon.common.model.SubtitleStyle = com.watermelon.common.model.SubtitleStyle()
@@ -65,151 +71,158 @@ fun SettingsScreen(
     state: SettingsState,
     onStateChange: (SettingsState) -> Unit,
     onFolderVisibilityClick: () -> Unit = {},
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        // Screen title
-        item {
-            Text(
-                text       = "Settings",
-                style      = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
+    Column(modifier = modifier.fillMaxSize()) {
+        // Header with logo and branding
+        WatermelonHeader(
+            title = "Settings",
+            showBackButton = true,
+            onBackClick = onBack,
+            modifier = Modifier.fillMaxWidth()
+        )
 
-        // ── Appearance ──────────────────────────────────────────────────────
-        item {
-            SettingsGroup("APPEARANCE") {
-                ToggleRow("Pure dark theme", state.pureDark) {
-                    onStateChange(state.copy(pureDark = it))
-                }
-                ToggleRow("Force RTL overrides", state.forcedRtl) {
-                    onStateChange(state.copy(forcedRtl = it))
+        Spacer(modifier = Modifier.height(WatermelonSpacing.md))
+
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                horizontal = WatermelonSpacing.md,
+                vertical = 0.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.md)
+        ) {
+            // ── Appearance ──────────────────────────────────────────────────────
+            item {
+                SettingsGroup("APPEARANCE") {
+                    ToggleRow("Pure dark theme", state.pureDark) {
+                        onStateChange(state.copy(pureDark = it))
+                    }
+                    ToggleRow("Force RTL overrides", state.forcedRtl) {
+                        onStateChange(state.copy(forcedRtl = it))
+                    }
                 }
             }
-        }
 
-        // ── View defaults ───────────────────────────────────────────────────
-        item {
-            SettingsGroup("VIEW DEFAULTS") {
-                ToggleRow("Grid layout by default", state.gridDefault) {
-                    onStateChange(state.copy(gridDefault = it))
-                }
-                ToggleRow("Show thumbnails", state.showThumbnails) {
-                    onStateChange(state.copy(showThumbnails = it))
-                }
-                ToggleRow("Show durations", state.showDurations) {
-                    onStateChange(state.copy(showDurations = it))
-                }
-                ToggleRow("Show file size", state.showFileSize) {
-                    onStateChange(state.copy(showFileSize = it))
+            // ── View defaults ───────────────────────────────────────────────────
+            item {
+                SettingsGroup("VIEW DEFAULTS") {
+                    ToggleRow("Grid layout by default", state.gridDefault) {
+                        onStateChange(state.copy(gridDefault = it))
+                    }
+                    ToggleRow("Show thumbnails", state.showThumbnails) {
+                        onStateChange(state.copy(showThumbnails = it))
+                    }
+                    ToggleRow("Show durations", state.showDurations) {
+                        onStateChange(state.copy(showDurations = it))
+                    }
+                    ToggleRow("Show file size", state.showFileSize) {
+                        onStateChange(state.copy(showFileSize = it))
+                    }
                 }
             }
-        }
 
-        // ── Player ──────────────────────────────────────────────────────────
-        item {
-            SettingsGroup("PLAYER") {
-                ToggleRow(
-                    label   = "Burst screenshot (9 frames)",
-                    checked = state.screenshotMode == ScreenshotMode.BURST
-                ) {
-                    onStateChange(
-                        state.copy(screenshotMode = if (it) ScreenshotMode.BURST else ScreenshotMode.SINGLE)
+            // ── Player ──────────────────────────────────────────────────────────
+            item {
+                SettingsGroup("PLAYER") {
+                    ToggleRow(
+                        label = "Burst screenshot (9 frames)",
+                        checked = state.screenshotMode == ScreenshotMode.BURST
+                    ) {
+                        onStateChange(
+                            state.copy(screenshotMode = if (it) ScreenshotMode.BURST else ScreenshotMode.SINGLE)
+                        )
+                    }
+                    ToggleRow("VHS effect", state.vhsEnabled) {
+                        onStateChange(state.copy(vhsEnabled = it))
+                    }
+                    NavRow(
+                        label = "VHS intensity",
+                        value = state.vhsIntensity.name.lowercase().replaceFirstChar { it.uppercase() },
+                        options = VhsIntensity.values().map { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } },
+                        onSelect = { selected ->
+                            val next = VhsIntensity.values().first {
+                                it.name.lowercase().replaceFirstChar { c -> c.uppercase() } == selected
+                            }
+                            onStateChange(state.copy(vhsIntensity = next))
+                        }
                     )
                 }
-                ToggleRow("VHS effect", state.vhsEnabled) {
-                    onStateChange(state.copy(vhsEnabled = it))
-                }
-                NavRow(
-                    label = "VHS intensity",
-                    value = state.vhsIntensity.name.lowercase().replaceFirstChar { it.uppercase() },
-                    options = VhsIntensity.values().map { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } },
-                    onSelect = { selected ->
-                        val next = VhsIntensity.values().first {
-                            it.name.lowercase().replaceFirstChar { c -> c.uppercase() } == selected
-                        }
-                        onStateChange(state.copy(vhsIntensity = next))
-                    }
-                )
             }
-        }
 
-        // ── Subtitles ────────────────────────────────────────────────────────
-        item {
-            SettingsGroup("SUBTITLES") {
-                val st = state.subtitleStyle
-                fun up(new: com.watermelon.common.model.SubtitleStyle) =
-                    onStateChange(state.copy(subtitleStyle = new))
+            // ── Subtitles ────────────────────────────────────────────────────────
+            item {
+                SettingsGroup("SUBTITLES") {
+                    val st = state.subtitleStyle
+                    fun up(new: com.watermelon.common.model.SubtitleStyle) =
+                        onStateChange(state.copy(subtitleStyle = new))
 
-                ToggleRow("Enable subtitles", st.enabled) { up(st.copy(enabled = it)) }
-                StepperRow("Text size", "${st.sizeSp}sp",
-                    onMinus = { up(st.copy(sizeSp = (st.sizeSp - 2).coerceAtLeast(12))) },
-                    onPlus  = { up(st.copy(sizeSp = (st.sizeSp + 2).coerceAtMost(48))) })
-                NavRow(
-                    label = "Text color",
-                    value = subtitleColorName(st.textColorArgb),
-                    options = SUBTITLE_COLORS.map { it.second },
-                    onSelect = { selected ->
-                        val argb = SUBTITLE_COLORS.first { it.second == selected }.first
-                        up(st.copy(textColorArgb = argb))
-                    }
-                )
-                NavRow(
-                    label = "Position",
-                    value = st.position.name.lowercase().replaceFirstChar { it.uppercase() },
-                    options = com.watermelon.common.model.SubtitlePosition.values()
-                        .map { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } },
-                    onSelect = { selected ->
-                        val next = com.watermelon.common.model.SubtitlePosition.values().first {
-                            it.name.lowercase().replaceFirstChar { c -> c.uppercase() } == selected
+                    ToggleRow("Enable subtitles", st.enabled) { up(st.copy(enabled = it)) }
+                    StepperRow("Text size", "${st.sizeSp}sp",
+                        onMinus = { up(st.copy(sizeSp = (st.sizeSp - 2).coerceAtLeast(12))) },
+                        onPlus = { up(st.copy(sizeSp = (st.sizeSp + 2).coerceAtMost(48))) })
+                    NavRow(
+                        label = "Text color",
+                        value = subtitleColorName(st.textColorArgb),
+                        options = SUBTITLE_COLORS.map { it.second },
+                        onSelect = { selected ->
+                            val argb = SUBTITLE_COLORS.first { it.second == selected }.first
+                            up(st.copy(textColorArgb = argb))
                         }
-                        up(st.copy(position = next))
-                    }
-                )
-                ToggleRow("Bold", st.bold) { up(st.copy(bold = it)) }
-                ToggleRow("Italic", st.italic) { up(st.copy(italic = it)) }
-                ToggleRow("Underline", st.underline) { up(st.copy(underline = it)) }
-                NavRow(
-                    label = "Direction",
-                    value = st.direction.label(),
-                    options = com.watermelon.common.model.SubtitleDirection.values().map { it.label() },
-                    onSelect = { selected ->
-                        val next = com.watermelon.common.model.SubtitleDirection.values().first { it.label() == selected }
-                        up(st.copy(direction = next))
-                    }
-                )
-                NavRow(
-                    label = "2nd sub direction",
-                    value = st.secondaryDirection.label(),
-                    options = com.watermelon.common.model.SubtitleDirection.values().map { it.label() },
-                    onSelect = { selected ->
-                        val next = com.watermelon.common.model.SubtitleDirection.values().first { it.label() == selected }
-                        up(st.copy(secondaryDirection = next))
-                    }
-                )
+                    )
+                    NavRow(
+                        label = "Position",
+                        value = st.position.name.lowercase().replaceFirstChar { it.uppercase() },
+                        options = com.watermelon.common.model.SubtitlePosition.values()
+                            .map { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } },
+                        onSelect = { selected ->
+                            val next = com.watermelon.common.model.SubtitlePosition.values().first {
+                                it.name.lowercase().replaceFirstChar { c -> c.uppercase() } == selected
+                            }
+                            up(st.copy(position = next))
+                        }
+                    )
+                    ToggleRow("Bold", st.bold) { up(st.copy(bold = it)) }
+                    ToggleRow("Italic", st.italic) { up(st.copy(italic = it)) }
+                    ToggleRow("Underline", st.underline) { up(st.copy(underline = it)) }
+                    NavRow(
+                        label = "Direction",
+                        value = st.direction.label(),
+                        options = com.watermelon.common.model.SubtitleDirection.values().map { it.label() },
+                        onSelect = { selected ->
+                            val next = com.watermelon.common.model.SubtitleDirection.values().first { it.label() == selected }
+                            up(st.copy(direction = next))
+                        }
+                    )
+                    NavRow(
+                        label = "2nd sub direction",
+                        value = st.secondaryDirection.label(),
+                        options = com.watermelon.common.model.SubtitleDirection.values().map { it.label() },
+                        onSelect = { selected ->
+                            val next = com.watermelon.common.model.SubtitleDirection.values().first { it.label() == selected }
+                            up(st.copy(secondaryDirection = next))
+                        }
+                    )
+                }
             }
-        }
 
-        // ── System ──────────────────────────────────────────────────────────
-        item {
-            SettingsGroup("SYSTEM") {
-                ToggleRow("Memory-safety (force Tier B)", state.memorySafety) {
-                    onStateChange(state.copy(memorySafety = it))
+            // ── System ──────────────────────────────────────────────────────────
+            item {
+                SettingsGroup("SYSTEM") {
+                    ToggleRow("Memory-safety (force Tier B)", state.memorySafety) {
+                        onStateChange(state.copy(memorySafety = it))
+                    }
+                    ToggleRow("Full folder access (power-user)", state.fullFolderAccess) {
+                        onStateChange(state.copy(fullFolderAccess = it))
+                    }
+                    NavRow(
+                        label = "Folder visibility",
+                        value = "Manage",
+                        accent = true,
+                        onClick = onFolderVisibilityClick
+                    )
                 }
-                ToggleRow("Full folder access (power-user)", state.fullFolderAccess) {
-                    onStateChange(state.copy(fullFolderAccess = it))
-                }
-                NavRow(
-                    label = "Folder visibility",
-                    value = "Manage",
-                    accent = true,
-                    onClick = onFolderVisibilityClick
-                )
             }
         }
     }
@@ -218,20 +231,23 @@ fun SettingsScreen(
 /** A titled card group: small colored eyebrow label, then a rounded surface of rows. */
 @Composable
 private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs)) {
         Text(
-            text       = title,
-            color      = MaterialTheme.colorScheme.primary,
-            fontSize   = 11.sp,
+            text = title,
+            color = WatermelonColors.Accent,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            modifier   = Modifier.padding(start = 4.dp)
+            modifier = Modifier.padding(start = WatermelonSpacing.xs)
         )
         Surface(
-            shape  = RoundedCornerShape(12.dp),
-            color  = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(WatermelonSpacing.control),
+            color = WatermelonColors.DarkSurface,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+            Column(modifier = Modifier.padding(
+                horizontal = WatermelonSpacing.md,
+                vertical = WatermelonSpacing.xs
+            )) {
                 content()
             }
         }
@@ -248,16 +264,21 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
                 onValueChange = onChange,
                 role = Role.Switch
             )
-            .padding(vertical = 10.dp),
+            .padding(vertical = WatermelonSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f).padding(end = 12.dp)
+            style = WatermelonTypography.typography.bodyLarge,
+            color = WatermelonColors.DarkOnSurface,
+            modifier = Modifier.weight(1f).padding(end = WatermelonSpacing.md)
         )
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            colors = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -276,31 +297,38 @@ private fun NavRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(role = Role.Button) { expanded = true }
-                .padding(vertical = 12.dp),
+                .padding(vertical = WatermelonSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(
+                label,
+                style = WatermelonTypography.typography.bodyLarge,
+                color = WatermelonColors.DarkOnSurface,
+                modifier = Modifier.weight(1f)
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = value,
-                    style = MaterialTheme.typography.bodyMedium,
-                    // Accent red fails AA text-contrast against surfaceVariant in both
-                    // themes, so accent styling here is bold weight only, not color.
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = WatermelonTypography.typography.bodyMedium,
+                    color = WatermelonColors.DarkOnSurfaceVariant,
                     fontWeight = if (accent) FontWeight.Bold else FontWeight.Normal
                 )
                 Icon(
                     Icons.Filled.ArrowDropDown,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = WatermelonColors.DarkOnSurfaceVariant
                 )
             }
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option) },
+                    text = { Text(
+                        option,
+                        style = WatermelonTypography.typography.bodyMedium,
+                        color = WatermelonColors.DarkOnSurface
+                    ) },
                     onClick = {
                         onSelect(option)
                         expanded = false
@@ -318,22 +346,27 @@ private fun NavRow(label: String, value: String, onClick: () -> Unit, accent: Bo
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .padding(vertical = WatermelonSpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(
-            text = "$value ›",
-            style = MaterialTheme.typography.bodyMedium,
-            // Accent red fails AA text-contrast against surfaceVariant in both themes —
-            // use bold weight, not color, to signal emphasis.
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            label,
+            style = WatermelonTypography.typography.bodyLarge,
+            color = WatermelonColors.DarkOnSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "$value >",
+            style = WatermelonTypography.typography.bodyMedium,
+            color = WatermelonColors.DarkOnSurfaceVariant,
             fontWeight = if (accent) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
 
+// Add missing import for clickable
+import androidx.compose.foundation.clickable
 
 // ── Subtitle settings helpers ───────────────────────────────────────────────
 
@@ -355,15 +388,38 @@ private fun com.watermelon.common.model.SubtitleDirection.label(): String = when
 @Composable
 private fun StepperRow(label: String, value: String, onMinus: () -> Unit, onPlus: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = WatermelonSpacing.xs),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            label,
+            style = WatermelonTypography.typography.bodyLarge,
+            color = WatermelonColors.DarkOnSurface,
+            modifier = Modifier.weight(1f)
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onMinus) { Text("−", fontSize = 20.sp) }
-            Text(value, style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onPlus) { Text("+", fontSize = 20.sp) }
+            TextButton(onClick = onMinus) {
+                Text(
+                    "-",
+                    fontSize = 20.sp,
+                    color = WatermelonColors.DarkOnSurface
+                )
+            }
+            Text(
+                value,
+                style = WatermelonTypography.typography.bodyMedium,
+                color = WatermelonColors.DarkOnSurface
+            )
+            TextButton(onClick = onPlus) {
+                Text(
+                    "+",
+                    fontSize = 20.sp,
+                    color = WatermelonColors.DarkOnSurface
+                )
+            }
         }
     }
 }

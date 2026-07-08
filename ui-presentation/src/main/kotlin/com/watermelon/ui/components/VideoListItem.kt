@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -29,7 +32,6 @@ import com.watermelon.ui.theme.WatermelonTypography
 
 /**
  * Video list item component with context menu support.
- * Implements the design system requirements for playlist cards.
  */
 enum class ItemSize(val label: String) { SMALL("S"), MEDIUM("M"), LARGE("L") }
 
@@ -53,9 +55,9 @@ fun VideoListItem(
         ItemSize.LARGE -> if (isGrid) 180.dp else 96.dp
     }
     val textStyle = when (itemSize) {
-        ItemSize.SMALL -> MaterialTheme.typography.bodySmall
-        ItemSize.MEDIUM -> MaterialTheme.typography.bodyMedium
-        ItemSize.LARGE -> MaterialTheme.typography.bodyLarge
+        ItemSize.SMALL -> WatermelonTypography.typography.bodySmall
+        ItemSize.MEDIUM -> WatermelonTypography.typography.bodyMedium
+        ItemSize.LARGE -> WatermelonTypography.typography.bodyLarge
     }
 
     val selectedBorder = if (isSelected) {
@@ -88,9 +90,8 @@ fun VideoListItem(
                         .clip(WatermelonShapes.small)
                 )
 
-                // Context menu button (top-right)
                 if (!selectionActive) {
-                    IconButton(
+                    androidx.compose.material3.IconButton(
                         onClick = onContextMenuClick,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -98,7 +99,7 @@ fun VideoListItem(
                             .size(32.dp)
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_more_vert),
+                            painter = painterResource(R.drawable.ic_more_vertical),
                             contentDescription = "More options",
                             tint = WatermelonColors.DarkSurface
                         )
@@ -110,9 +111,9 @@ fun VideoListItem(
                 Text(
                     text = item.displayName,
                     style = textStyle,
+                    color = WatermelonColors.DarkOnSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = WatermelonColors.DarkOnSurface,
                     modifier = Modifier.weight(1f)
                 )
                 if (item.lastPlayedAt == null) {
@@ -144,9 +145,8 @@ fun VideoListItem(
                         .clip(WatermelonShapes.small)
                 )
 
-                // Context menu button (on thumbnail)
                 if (!selectionActive) {
-                    IconButton(
+                    androidx.compose.material3.IconButton(
                         onClick = onContextMenuClick,
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -168,9 +168,9 @@ fun VideoListItem(
                     Text(
                         text = item.displayName,
                         style = textStyle,
+                        color = WatermelonColors.DarkOnSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = WatermelonColors.DarkOnSurface,
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     if (item.lastPlayedAt == null) {
@@ -184,14 +184,13 @@ fun VideoListItem(
                 )
             }
 
-            // Context menu button (end of row)
             if (!selectionActive) {
-                IconButton(
+                androidx.compose.material3.IconButton(
                     onClick = onContextMenuClick,
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_more_vert),
+                        painter = painterResource(R.drawable.ic_more_vertical),
                         contentDescription = "More options",
                         tint = WatermelonColors.DarkOnSurfaceVariant
                     )
@@ -207,20 +206,4 @@ private fun formatDuration(ms: Long): String {
     val m = (s % 3600) / 60
     val sec = s % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
-}
-
-@Composable
-private fun IconButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .size(40.dp)
-            .clip(WatermelonShapes.sharp)
-            .combinedClickable(onClick = onClick)
-    ) {
-        // Content will be provided by caller
-    }
 }

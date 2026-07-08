@@ -677,3 +677,4 @@ class MainActivity : ComponentActivity() {
     }
 
     private enum class PiPTier { SMALL, MID, EXPANDED }
+}

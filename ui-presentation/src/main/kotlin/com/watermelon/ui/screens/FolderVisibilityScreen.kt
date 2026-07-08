@@ -26,15 +26,6 @@ import com.watermelon.ui.theme.WatermelonColors
 import com.watermelon.ui.theme.WatermelonSpacing
 import com.watermelon.ui.theme.WatermelonTypography
 
-/**
- * Settings sub-screen for folder visibility.
- * Each folder has a toggle — off means excluded from the index and invisible in
- * FolderBrowserScreen. Toggled state is persisted by the caller via [onToggle].
- *
- * @param folders list of (folderPath, displayName, isVisible)
- * @param onToggle called with (folderPath, newVisibility)
- * @param onBack callback for header back button
- */
 @Composable
 fun FolderVisibilityScreen(
     folders: List<Triple<String, String, Boolean>>,
@@ -43,7 +34,6 @@ fun FolderVisibilityScreen(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        // Header with logo and branding
         WatermelonHeader(
             title = "Folder Visibility",
             showBackButton = true,
@@ -134,8 +124,7 @@ fun FolderVisibilityScreen(
                     }
                     Switch(
                         checked = isVisible,
-                        onCheckedChange = null,
-                        colors = MaterialTheme.colorScheme.primary
+                        onCheckedChange = null
                     )
                 }
                 HorizontalDivider(

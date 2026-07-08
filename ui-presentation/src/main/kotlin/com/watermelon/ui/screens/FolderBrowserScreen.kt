@@ -21,8 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -43,11 +42,12 @@ import com.watermelon.ui.components.FolderListItem
 import com.watermelon.ui.components.LabeledIconButton
 import com.watermelon.ui.components.WatermelonHeader
 import com.watermelon.ui.theme.WatermelonColors
+import com.watermelon.ui.theme.WatermelonShapes
 import com.watermelon.ui.theme.WatermelonSpacing
+import com.watermelon.ui.theme.WatermelonTypography
 import com.watermelon.ui.viewmodel.BrowserRow
 import com.watermelon.ui.viewmodel.FolderViewModel
 
-/** Thumbnail density / cell size for folder and video lists. */
 enum class ItemSize(val label: String) { SMALL("S"), MEDIUM("M"), LARGE("L") }
 
 enum class FolderLayout { LIST, GRID }
@@ -63,17 +63,6 @@ private val SizeSaver = androidx.compose.runtime.saveable.Saver<ItemSize, String
     restore = { ItemSize.valueOf(it) }
 )
 
-/**
- * Folder browser, matching wireframe #1:
- *   [labeled toolbar: Grid · Sort · Asc · S/M/L · Settings]
- *   MY VIDEO PLAYLISTS   (eyebrow header)
- *     Recently Added, Favourites, user playlists…
- *   MAIN STORAGE         (eyebrow header)
- *     storage folders…
- *
- * Consumes FolderViewModel.rows (headers + folders) instead of the flat tree, so the
- * section structure and hidden-folder filtering from Phase A are honored.
- */
 @Composable
 fun FolderBrowserScreen(
     viewModel: FolderViewModel,
@@ -90,8 +79,6 @@ fun FolderBrowserScreen(
     var sortMenuOpen by remember { mutableStateOf(false) }
     var currentSort by rememberSaveable { mutableStateOf(FolderSort.NAME) }
 
-    // Sort/ascending is applied per section (headers stay in place, folders within each
-    // section are reordered) so "MY VIDEO PLAYLISTS" / "MAIN STORAGE" grouping survives.
     val rows by remember(rowsRaw, currentSort, ascending) {
         derivedStateOf {
             val baseComparator: Comparator<FolderNode> = when (currentSort) {
@@ -133,136 +120,130 @@ fun FolderBrowserScreen(
         ItemSize.LARGE -> GridCells.Fixed(2)
     }
 
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            WatermelonHeader(
-                title = "Media Library",
-                showBackButton = false,
-                showSettingsButton = true,
-                onSettingsClick = onSettingsClick
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
+    Column(modifier = modifier.fillMaxSize()) {
+        WatermelonHeader(
+            title = "Media Library",
+            showBackButton = false,
+            showSettingsButton = true,
+            onSettingsClick = onSettingsClick,
+            modifier = Modifier.fillMaxWidth()
+        )
 
-            // Toolbar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = WatermelonSpacing.sm, vertical = WatermelonSpacing.xs),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Spacer(modifier = Modifier.height(WatermelonSpacing.hairline))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = WatermelonSpacing.sm, vertical = WatermelonSpacing.xs),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            LabeledIconButton(
+                icon = if (isGrid) WatermelonIcons.ViewList else WatermelonIcons.ViewGrid,
+                label = if (isGrid) "List" else "Grid",
+                onClick = { currentLayout = if (isGrid) FolderLayout.LIST else FolderLayout.GRID }
+            )
+            Box {
                 LabeledIconButton(
-                    icon = if (isGrid) WatermelonIcons.ViewList else WatermelonIcons.ViewGrid,
-                    label = if (isGrid) "List" else "Grid",
-                    onClick = { currentLayout = if (isGrid) FolderLayout.LIST else FolderLayout.GRID }
+                    icon = WatermelonIcons.Sort,
+                    label = "Sort: ${currentSort.label()}${if (currentSort.isUnavailable()) " *" else ""}",
+                    onClick = { sortMenuOpen = true }
                 )
-                Box {
-                    LabeledIconButton(
-                        icon = WatermelonIcons.Sort,
-                        label = "Sort: ${currentSort.label()}${if (currentSort.isUnavailable()) " *" else ""}",
-                        onClick = { sortMenuOpen = true }
-                    )
-                    DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
-                        FolderSort.values().forEach { opt ->
-                            DropdownMenuItem(
-                                text = { Text(opt.label() + if (opt.isUnavailable()) " (uses Name)" else "") },
-                                onClick = { currentSort = opt; sortMenuOpen = false }
+                DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
+                    FolderSort.values().forEach { opt ->
+                        DropdownMenuItem(
+                            text = { Text(
+                                opt.label() + if (opt.isUnavailable()) " (uses Name)" else "",
+                                style = WatermelonTypography.typography.bodyMedium,
+                                color = WatermelonColors.DarkOnSurface
+                            ) },
+                            onClick = { currentSort = opt; sortMenuOpen = false }
+                        )
+                    }
+                }
+            }
+            LabeledIconButton(
+                icon = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
+                label = if (ascending) "Ascending" else "Descending",
+                onClick = { ascending = !ascending }
+            )
+            ItemSize.values().forEach { size ->
+                LabeledIconButton(
+                    icon = when (size) {
+                        ItemSize.SMALL -> R.drawable.ic_size_small
+                        ItemSize.MEDIUM -> R.drawable.ic_size_medium
+                        ItemSize.LARGE -> R.drawable.ic_size_large
+                    },
+                    label = size.label,
+                    active = size == currentItemSize,
+                    onClick = { currentItemSize = size }
+                )
+            }
+        }
+
+        HorizontalDivider(
+            thickness = WatermelonSpacing.hairline,
+            color = WatermelonColors.DarkOutline
+        )
+
+        if (rows.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    "No media folders found",
+                    style = WatermelonTypography.typography.bodyLarge,
+                    color = WatermelonColors.DarkOnSurface
+                )
+            }
+            return@Column
+        }
+
+        when (currentLayout) {
+            FolderLayout.LIST -> LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(horizontal = WatermelonSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs / 2)
+            ) {
+                rows.forEach { row ->
+                    when (row) {
+                        is BrowserRow.Header -> item(key = "hdr-${row.title}") {
+                            SectionHeader(row.title)
+                        }
+                        is BrowserRow.Folder -> item(key = row.node.path) {
+                            FolderListItem(
+                                folder = row.node,
+                                onClick = onFolderClick,
+                                itemSize = currentItemSize,
+                                isGrid = false,
+                                isScrollingFast = isScrolling
                             )
                         }
                     }
                 }
-                LabeledIconButton(
-                    icon = if (ascending) R.drawable.ic_sort_ascending else R.drawable.ic_sort_descending,
-                    label = if (ascending) "Ascending" else "Descending",
-                    onClick = { ascending = !ascending }
-                )
-                ItemSize.values().forEach { size ->
-                    LabeledIconButton(
-                        icon = when (size) {
-                            ItemSize.SMALL -> R.drawable.ic_size_small
-                            ItemSize.MEDIUM -> R.drawable.ic_size_medium
-                            ItemSize.LARGE -> R.drawable.ic_size_large
-                        },
-                        label = size.label,
-                        active = size == currentItemSize,
-                        onClick = { currentItemSize = size }
-                    )
-                }
             }
 
-            Spacer(modifier = Modifier.height(WatermelonSpacing.hairline))
-
-            // Content
-            if (rows.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        "No media folders found",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = WatermelonColors.DarkOnSurface
-                    )
-                }
-                return@Column
-            }
-
-            when (currentLayout) {
-                FolderLayout.LIST -> LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = WatermelonSpacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.xs / 2)
-                ) {
-                    rows.forEach { row ->
-                        when (row) {
-                            is BrowserRow.Header -> item(key = "hdr-${row.title}") {
-                                SectionHeader(row.title)
-                            }
-                            is BrowserRow.Folder -> item(key = row.node.path) {
-                                FolderListItem(
-                                    folder = row.node,
-                                    onClick = onFolderClick,
-                                    itemSize = currentItemSize,
-                                    isGrid = false,
-                                    isScrollingFast = isScrolling
-                                )
-                            }
-                        }
-                    }
-                }
-
-                FolderLayout.GRID -> LazyVerticalGrid(
-                    state = gridState,
-                    columns = gridColumns,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(WatermelonSpacing.sm),
-                    horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm)
-                ) {
-                    rows.forEach { row ->
-                        when (row) {
-                            is BrowserRow.Header -> item(
-                                key = "hdr-${row.title}",
-                                span = { GridItemSpan(maxLineSpan) }
-                            ) { SectionHeader(row.title) }
-                            is BrowserRow.Folder -> gridItems(
-                                listOf(row.node), key = { it.path }
-                            ) { folder ->
-                                FolderListItem(
-                                    folder = folder,
-                                    onClick = onFolderClick,
-                                    itemSize = currentItemSize,
-                                    isGrid = true,
-                                    isScrollingFast = isScrolling
-                                )
-                            }
+            FolderLayout.GRID -> LazyVerticalGrid(
+                state = gridState,
+                columns = gridColumns,
+                modifier = Modifier.fillMaxSize().padding(WatermelonSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm)
+            ) {
+                rows.forEach { row ->
+                    when (row) {
+                        is BrowserRow.Header -> item(
+                            key = "hdr-${row.title}",
+                            span = { GridItemSpan(maxLineSpan) }
+                        ) { SectionHeader(row.title) }
+                        is BrowserRow.Folder -> gridItems(
+                            listOf(row.node), key = { it.path }
+                        ) { folder ->
+                            FolderListItem(
+                                folder = folder,
+                                onClick = onFolderClick,
+                                itemSize = currentItemSize,
+                                isGrid = true,
+                                isScrollingFast = isScrolling
+                            )
                         }
                     }
                 }
@@ -271,15 +252,11 @@ fun FolderBrowserScreen(
     }
 }
 
-/**
- * Eyebrow section header: "MY VIDEO PLAYLISTS" / "MAIN STORAGE".
- * Uses the labelSmall overline/badge style from the expanded typography scale.
- */
 @Composable
 private fun SectionHeader(title: String) {
     Text(
         text = title.uppercase(),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = WatermelonColors.DarkOnSurfaceVariant,
         style = WatermelonTypography.typography.labelSmall,
         fontWeight = FontWeight.Bold,
         modifier = Modifier
@@ -299,5 +276,4 @@ private fun FolderSort.label() = when (this) {
     FolderSort.RESOLUTION -> "Resolution"
 }
 
-/** True for sort modes with no backing field on [FolderNode] yet (falls back to Name). */
 private fun FolderSort.isUnavailable() = this == FolderSort.DATE || this == FolderSort.RESOLUTION

@@ -42,13 +42,10 @@ import com.watermelon.ui.components.FolderListItem
 import com.watermelon.ui.components.LabeledIconButton
 import com.watermelon.ui.components.WatermelonHeader
 import com.watermelon.ui.theme.WatermelonColors
-import com.watermelon.ui.theme.WatermelonShapes
 import com.watermelon.ui.theme.WatermelonSpacing
 import com.watermelon.ui.theme.WatermelonTypography
 import com.watermelon.ui.viewmodel.BrowserRow
 import com.watermelon.ui.viewmodel.FolderViewModel
-
-enum class ItemSize(val label: String) { SMALL("S"), MEDIUM("M"), LARGE("L") }
 
 enum class FolderLayout { LIST, GRID }
 enum class FolderSort { NAME, DATE, SIZE, RESOLUTION }
@@ -56,11 +53,6 @@ enum class FolderSort { NAME, DATE, SIZE, RESOLUTION }
 private val LayoutSaver = androidx.compose.runtime.saveable.Saver<FolderLayout, String>(
     save = { it.name },
     restore = { FolderLayout.valueOf(it) }
-)
-
-private val SizeSaver = androidx.compose.runtime.saveable.Saver<ItemSize, String>(
-    save = { it.name },
-    restore = { ItemSize.valueOf(it) }
 )
 
 @Composable
@@ -74,7 +66,7 @@ fun FolderBrowserScreen(
     val rowsRaw by viewModel.rows.collectAsStateWithLifecycle()
 
     var currentLayout by rememberSaveable(stateSaver = LayoutSaver) { mutableStateOf(layout) }
-    var currentItemSize by rememberSaveable(stateSaver = SizeSaver) { mutableStateOf(ItemSize.MEDIUM) }
+    var currentItemSize by rememberSaveable { mutableStateOf(com.watermelon.ui.components.ItemSize.MEDIUM) }
     var ascending by rememberSaveable { mutableStateOf(true) }
     var sortMenuOpen by remember { mutableStateOf(false) }
     var currentSort by rememberSaveable { mutableStateOf(FolderSort.NAME) }
@@ -115,9 +107,9 @@ fun FolderBrowserScreen(
 
     val isGrid = currentLayout == FolderLayout.GRID
     val gridColumns = when (currentItemSize) {
-        ItemSize.SMALL -> GridCells.Fixed(3)
-        ItemSize.MEDIUM -> GridCells.Fixed(2)
-        ItemSize.LARGE -> GridCells.Fixed(2)
+        com.watermelon.ui.components.ItemSize.SMALL -> GridCells.Fixed(3)
+        com.watermelon.ui.components.ItemSize.MEDIUM -> GridCells.Fixed(2)
+        com.watermelon.ui.components.ItemSize.LARGE -> GridCells.Fixed(2)
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -129,7 +121,7 @@ fun FolderBrowserScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(WatermelonSpacing.hairline))
+        Spacer(modifier = Modifier.height(WatermelonSpacing.sm))
 
         Row(
             modifier = Modifier
@@ -152,11 +144,13 @@ fun FolderBrowserScreen(
                 DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
                     FolderSort.values().forEach { opt ->
                         DropdownMenuItem(
-                            text = { Text(
-                                opt.label() + if (opt.isUnavailable()) " (uses Name)" else "",
-                                style = WatermelonTypography.typography.bodyMedium,
-                                color = WatermelonColors.DarkOnSurface
-                            ) },
+                            text = {
+                                Text(
+                                    opt.label() + if (opt.isUnavailable()) " (uses Name)" else "",
+                                    style = WatermelonTypography.typography.bodyMedium,
+                                    color = WatermelonColors.DarkOnSurface
+                                )
+                            },
                             onClick = { currentSort = opt; sortMenuOpen = false }
                         )
                     }
@@ -167,12 +161,12 @@ fun FolderBrowserScreen(
                 label = if (ascending) "Ascending" else "Descending",
                 onClick = { ascending = !ascending }
             )
-            ItemSize.values().forEach { size ->
+            com.watermelon.ui.components.ItemSize.values().forEach { size ->
                 LabeledIconButton(
                     icon = when (size) {
-                        ItemSize.SMALL -> R.drawable.ic_size_small
-                        ItemSize.MEDIUM -> R.drawable.ic_size_medium
-                        ItemSize.LARGE -> R.drawable.ic_size_large
+                        com.watermelon.ui.components.ItemSize.SMALL -> R.drawable.ic_size_small
+                        com.watermelon.ui.components.ItemSize.MEDIUM -> R.drawable.ic_size_medium
+                        com.watermelon.ui.components.ItemSize.LARGE -> R.drawable.ic_size_large
                     },
                     label = size.label,
                     active = size == currentItemSize,

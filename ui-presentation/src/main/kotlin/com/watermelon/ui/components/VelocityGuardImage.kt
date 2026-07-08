@@ -52,6 +52,7 @@ fun VelocityGuardImage(
 ) {
     val context = LocalContext.current
 
+    @Suppress("ProduceStateDoesNotAssignValue")
     val result by produceState<ThumbnailResult>(initialValue = ThumbnailResult.Loading, uri, durationMs) {
         value = ThumbnailResult.Loading
         value = loadThumbnail(context, uri, durationMs)

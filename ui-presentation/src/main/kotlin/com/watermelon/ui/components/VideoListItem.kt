@@ -30,9 +30,6 @@ import com.watermelon.ui.theme.WatermelonShapes
 import com.watermelon.ui.theme.WatermelonSpacing
 import com.watermelon.ui.theme.WatermelonTypography
 
-/**
- * Video list item component with context menu support.
- */
 enum class ItemSize(val label: String) { SMALL("S"), MEDIUM("M"), LARGE("L") }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -69,10 +66,7 @@ fun VideoListItem(
     val clickModifier = Modifier
         .clip(WatermelonShapes.control)
         .then(selectedBorder)
-        .combinedClickable(
-            onClick = onClick,
-            onLongClick = onLongClick
-        )
+        .combinedClickable(onClick = onClick, onLongClick = onLongClick)
 
     if (isGrid) {
         Column(
@@ -205,5 +199,3 @@ private fun formatDuration(ms: Long): String {
     val h = s / 3600
     val m = (s % 3600) / 60
     val sec = s % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
-}

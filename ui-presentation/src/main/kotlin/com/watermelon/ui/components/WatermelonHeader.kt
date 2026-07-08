@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.watermelon.ui.R
 import com.watermelon.ui.theme.WatermelonColors
@@ -25,7 +24,6 @@ import com.watermelon.ui.theme.WatermelonTypography
 
 /**
  * Watermelon MediaPlayer header with logo and branding.
- * Implements the "Header with logo and branding" requirement from the UI Design System.
  */
 @Composable
 fun WatermelonHeader(
@@ -47,7 +45,6 @@ fun WatermelonHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Left side: Back button or spacer
         if (showBackButton) {
             IconButton(
                 onClick = onBackClick,
@@ -63,7 +60,6 @@ fun WatermelonHeader(
             Box(modifier = Modifier.size(40.dp))
         }
 
-        // Center: Logo and Title
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start,
@@ -85,7 +81,6 @@ fun WatermelonHeader(
             )
         }
 
-        // Right side: Action buttons
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
@@ -108,7 +103,7 @@ fun WatermelonHeader(
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_menu),
+                        painter = painterResource(R.drawable.ic_more_vertical),
                         contentDescription = "Menu",
                         tint = WatermelonColors.DarkOnSurface
                     )
@@ -116,14 +111,4 @@ fun WatermelonHeader(
             }
         }
     }
-}
-
-@Preview
-@Composable
-private fun WatermelonHeaderPreview() {
-    WatermelonHeader(
-        title = "Media Library",
-        showBackButton = true,
-        showSettingsButton = true
-    )
 }

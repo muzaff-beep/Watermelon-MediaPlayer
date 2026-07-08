@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -55,6 +57,7 @@ import com.watermelon.ui.components.ItemSize
 import com.watermelon.ui.theme.WatermelonColors
 import com.watermelon.ui.theme.WatermelonShapes
 import com.watermelon.ui.theme.WatermelonSpacing
+import com.watermelon.ui.theme.WatermelonTypography
 import com.watermelon.ui.viewmodel.VideoListViewModel
 
 private enum class VideoSort(val label: String) {
@@ -79,7 +82,7 @@ private val ItemSizeSaver = androidx.compose.runtime.saveable.Saver<ItemSize, St
     restore = { ItemSize.valueOf(it) }
 )
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun VideoListScreen(
     viewModel: VideoListViewModel,
@@ -102,6 +105,7 @@ fun VideoListScreen(
     var currentLayout by rememberSaveable(stateSaver = LayoutSaver) {
         mutableStateOf(VideoLayout.LIST)
     }
+    val isGrid = currentLayout == VideoLayout.GRID
     var sortMenuOpen by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -412,9 +416,7 @@ fun VideoListScreen(
                     }.forEach { playlist ->
                         TextButton(
                             onClick = {
-                                selectedItems.forEach { uri ->
-                                    viewModel.addToPlaylist(playlist.id, uri)
-                                }
+                                viewModel.addSelectedToPlaylist(playlist.id)
                                 showPlaylistPicker = false
                             },
                             modifier = Modifier.fillMaxWidth()

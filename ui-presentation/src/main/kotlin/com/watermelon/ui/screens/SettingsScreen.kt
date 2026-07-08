@@ -250,7 +250,7 @@ private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
             modifier = Modifier.padding(start = WatermelonSpacing.xs)
         )
         Surface(
-            shape = RoundedCornerShape(size = WatermelonShapes.control),
+            shape = WatermelonShapes.control,
             color = WatermelonColors.DarkSurface,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -432,12 +432,12 @@ private fun StepperRow(
 }
 
 private val SUBTITLE_COLORS = listOf(
-    0xFFFFFFFF.toInt() to "White",
-    0xFFFFEB3B.toInt() to "Yellow",
-    0xFF00E5FF.toInt() to "Cyan",
-    0xFF69F0AE.toInt() to "Green",
-    0xFFFF8A80.toInt() to "Coral",
-    0xFF000000.toInt() to "Black"
+    0xFFFFFFFFL to "White",
+    0xFFFFEB3BL to "Yellow",
+    0xFF00E5FFL to "Cyan",
+    0xFF69F0AEL to "Green",
+    0xFFFF8A80L to "Coral",
+    0xFF000000L to "Black"
 )
 
 private fun subtitleColorName(argb: Long): String =

@@ -15,10 +15,13 @@ enum class PlayerSheet { NONE, SETTINGS, SUBTITLE, SYNC, TRACKS }
  * layer, the controls, and the auto-hide logic all read from and write to this one object.
  *
  * RULES enforced by readers:
- *   - When [sheet] != NONE  → auto-hide is suspended, gesture layer is disabled.
- *   - When [isLocked]       → controls hidden, gesture layer disabled (except the unlock tap).
- *   - Gesture layer is live ONLY when controls are hidden, no sheet is open, and not locked
- *     (or by the project's chosen rule — see [gesturesEnabled]).
+ *   - When [sheet] != NONE     → auto-hide is suspended, gesture layer is disabled.
+ *   - When [isLocked]          → controls hidden, gesture layer disabled (except the unlock tap).
+ *   - When [controlsVisible]   → gesture layer disabled; controls own touch in their own
+ *     regions, and a dedicated scrim tap-catcher (drawn behind the controls, not the
+ *     full-screen gesture layer) handles "tap empty space to hide controls".
+ *   - Gesture layer (swipe-to-seek/volume/brightness, FF/FR hold) is live ONLY when controls
+ *     are hidden, no sheet is open, and not locked — see [gesturesEnabled].
  */
 @Stable
 class PlayerUiState {
@@ -48,7 +51,17 @@ class PlayerUiState {
     fun autoHideEligible(isPlaying: Boolean): Boolean =
         isPlaying && controlsVisible && !sheetOpen && !isLocked
 
-    /** The gesture surface is active only when nothing is capturing touch above it. */
+    /**
+     * The gesture surface is active only when nothing is capturing touch above it.
+     *
+     * Critically this includes [controlsVisible]: once controls (buttons, seek bar, control
+     * panel) are on screen they own touch in their own regions. Leaving the full-screen
+     * gesture layer live underneath them caused two symptoms that were really one bug:
+     *   - Taps meant for a button (play/pause, menu, etc.) were also seen by the full-screen
+     *     tap detector, which toggled controls off right as the button was pressed.
+     *   - Drags on the tuner seek bar were also seen by the full-screen horizontal-drag→seek
+     *     gesture underneath it, so two independent seek systems fought over the same touch.
+     */
     val gesturesEnabled: Boolean
-        get() = !sheetOpen && !isLocked
+        get() = !sheetOpen && !isLocked && !controlsVisible
 }

@@ -1,8 +1,6 @@
 name: Watermelon Build Judge
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 jobs:

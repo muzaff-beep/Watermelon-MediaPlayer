@@ -65,7 +65,7 @@ fun VelocityGuardImage(
             is ThumbnailResult.Loaded -> Image(
                 bitmap             = r.bitmap.asImageBitmap(),
                 contentDescription = null,
-                contentScale       = ContentScale.Fit,
+                contentScale       = ContentScale.Crop,
                 modifier           = Modifier.fillMaxSize()
             )
             ThumbnailResult.Loading -> CircularProgressIndicator(

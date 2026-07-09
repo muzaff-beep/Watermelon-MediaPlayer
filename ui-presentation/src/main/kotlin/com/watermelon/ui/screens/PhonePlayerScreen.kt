@@ -61,6 +61,7 @@ import com.watermelon.ui.components.LevelIndicator
 import com.watermelon.ui.components.SleepTimerDialog
 import com.watermelon.ui.components.SubtitleOverlay
 import com.watermelon.ui.components.WatermelonSeekBar
+import com.watermelon.ui.components.WatermelonTunerSeekBar
 import com.watermelon.ui.player.VhsEffectController
 import com.watermelon.ui.theme.PlayerColors
 import com.watermelon.ui.utils.ScreenshotManager
@@ -99,6 +100,7 @@ fun PhonePlayerScreen(
     vhs: VhsEffectController,
     vhsEnabled: Boolean,
     vhsIntensity: Float,
+    tunerSeekBarEnabled: Boolean = true,
     durationMs: Long,
     surface: @Composable (Modifier) -> Unit,
     onBack: () -> Unit,
@@ -341,6 +343,9 @@ fun PhonePlayerScreen(
         )
 
         // ── Layer 2: Gesture surface (gated by ui.gesturesEnabled) ──────────
+        // Live only while controls are hidden — swipe-to-seek/volume/brightness and the
+        // FF/FR hold gesture. Once controls are visible this layer steps aside entirely so
+        // it can't steal taps/drags meant for buttons or the seek bar (see Layer 3 tap-catcher).
         Box(
             Modifier.fillMaxSize()
                 .pointerInput(ui.gesturesEnabled, showControlPanel) {
@@ -429,6 +434,29 @@ fun PhonePlayerScreen(
 
         // ── Layer 3: Controls (top/bottom scrim only; NO full-screen pause dim) ──
         if (ui.controlsVisible) {
+            // Tap-catcher: fills the screen so tapping anywhere NOT on a real control hides
+            // the controls again. Drawn first so it sits behind every button/bar in this
+            // layer — Compose hit-tests later (higher z) siblings first, so buttons still
+            // win over this when tapped directly.
+            Box(
+                Modifier.fillMaxSize()
+                    .pointerInput(showControlPanel) {
+                        detectTapGestures(
+                            onTap = {
+                                if (showControlPanel) {
+                                    showControlPanel = false
+                                } else {
+                                    lastInteraction = System.nanoTime(); ui.hideControls()
+                                }
+                            },
+                            onDoubleTap = {
+                                viewModel.onIntent(if (isPlaying) UserIntent.Pause else UserIntent.Resume)
+                                lastInteraction = System.nanoTime()
+                            }
+                        )
+                    }
+            )
+
             // Top scrim gradient behind the top bar
             Box(
                 Modifier.fillMaxWidth().height(96.dp).align(Alignment.TopCenter)
@@ -455,83 +483,98 @@ fun PhonePlayerScreen(
                     Icon(painterResource(R.drawable.ic_lock), "Lock", tint = PlayerColors.current.iconDefault)
                 }
                 IconButton(onClick = { showControlPanel = !showControlPanel }) {
-                    Icon(painterResource(R.drawable.ic_more_horizontal), "Menu", tint = if (showControlPanel) PlayerColors.current.iconActive else PlayerColors.current.iconDefault)
+                    Icon(painterResource(R.drawable.ic_settings_outline), "Menu", tint = if (showControlPanel) PlayerColors.current.iconActive else PlayerColors.current.iconDefault)
                 }
             }
 
-            // Center cluster: prev-track · skip-back · play/pause · skip-forward · next-track
+            // (Playback cluster — prev / play·pause / next — now lives just above the
+            // seek bar in the bottom section below, not dead-center over the video.)
             val hasNextTrack = remember(uri) { PlaybackQueue.nextOf(uri) != null }
-            Row(
-                modifier = Modifier.align(Alignment.Center),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
+
+            // Bottom bar: playback cluster (prev · play/pause · next) sits just above the
+            // seek control — NOT dead-center over the video — followed by the seek bar
+            // (radio-tuner style, or normal — per settings) and its time labels.
+            Column(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Previous track: if >3s in, restart current; else go to previous file.
-                IconButton(onClick = {
-                    if (position > 3_000L) {
-                        viewModel.onIntent(UserIntent.Seek(0L))
-                    } else {
-                        val prev = PlaybackQueue.previousOf(uri)
-                        if (prev != null) onSkipToTrack?.invoke(prev)
-                        else viewModel.onIntent(UserIntent.Seek(0L))
-                    }
-                    run { lastInteraction = System.nanoTime(); ui.showControls() }
-                }) {
-                    Icon(painterResource(R.drawable.ic_skip_previous), "Previous track",
-                        tint = PlayerColors.current.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
-                }
-                IconButton(onClick = {
-                    viewModel.onIntent(UserIntent.Seek((position - 10_000L).coerceAtLeast(0L)))
-                    run { lastInteraction = System.nanoTime(); ui.showControls() }
-                }) {
-                    Icon(painterResource(R.drawable.ic_rewind), "Skip back 10s",
-                        tint = PlayerColors.current.iconDefault, modifier = Modifier.width(34.dp).height(34.dp))
-                }
-                IconButton(
-                    onClick = { viewModel.onIntent(if (isPlaying) UserIntent.Pause else UserIntent.Resume) }
+                // Playback cluster: previous · play/pause (big, red) · next. Nothing else —
+                // the 10s skip buttons live in the swipe-to-seek gesture and the seek bar
+                // itself, so this row stays to exactly the three controls that matter here.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(28.dp),
+                    modifier = Modifier.padding(bottom = 6.dp)
                 ) {
-                    Icon(
-                        painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play),
-                        if (isPlaying) "Pause" else "Play",
-                        tint = PlayerColors.current.iconDefault,
-                        modifier = Modifier.width(52.dp).height(52.dp)
-                    )
-                }
-                IconButton(onClick = {
-                    viewModel.onIntent(UserIntent.Seek((position + 10_000L).coerceAtMost(durationMs)))
-                    run { lastInteraction = System.nanoTime(); ui.showControls() }
-                }) {
-                    Icon(painterResource(R.drawable.ic_fast_forward), "Skip forward 10s",
-                        tint = PlayerColors.current.iconDefault, modifier = Modifier.width(34.dp).height(34.dp))
-                }
-                // Next track: INVISIBLE when there is no adjacent next file.
-                if (hasNextTrack) {
                     IconButton(onClick = {
-                        PlaybackQueue.nextOf(uri)?.let { onSkipToTrack?.invoke(it) }
+                        // Previous track: if >3s in, restart current; else go to previous file.
+                        if (position > 3_000L) {
+                            viewModel.onIntent(UserIntent.Seek(0L))
+                        } else {
+                            val prev = PlaybackQueue.previousOf(uri)
+                            if (prev != null) onSkipToTrack?.invoke(prev)
+                            else viewModel.onIntent(UserIntent.Seek(0L))
+                        }
                         run { lastInteraction = System.nanoTime(); ui.showControls() }
                     }) {
-                        Icon(painterResource(R.drawable.ic_skip_next), "Next track",
+                        Icon(painterResource(R.drawable.ic_skip_previous), "Previous track",
                             tint = PlayerColors.current.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
                     }
+                    IconButton(
+                        onClick = { viewModel.onIntent(if (isPlaying) UserIntent.Pause else UserIntent.Resume) },
+                        modifier = Modifier
+                            .width(64.dp).height(64.dp)
+                            .background(PlayerColors.current.accent, androidx.compose.foundation.shape.CircleShape)
+                    ) {
+                        Icon(
+                            painterResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play),
+                            if (isPlaying) "Pause" else "Play",
+                            tint = Color.White,
+                            modifier = Modifier.width(32.dp).height(32.dp)
+                        )
+                    }
+                    // Next track: INVISIBLE when there is no adjacent next file — keeps the
+                    // cluster centered rather than showing a dead button.
+                    if (hasNextTrack) {
+                        IconButton(onClick = {
+                            PlaybackQueue.nextOf(uri)?.let { onSkipToTrack?.invoke(it) }
+                            run { lastInteraction = System.nanoTime(); ui.showControls() }
+                        }) {
+                            Icon(painterResource(R.drawable.ic_skip_next), "Next track",
+                                tint = PlayerColors.current.iconDefault, modifier = Modifier.width(30.dp).height(30.dp))
+                        }
+                    } else {
+                        Spacer(Modifier.width(30.dp))
+                    }
                 }
-            }
 
-            // Bottom bar: time + custom seekbar
-            Column(
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Row(Modifier.fillMaxWidth()) {
-                    Text(formatTime(position), color = PlayerColors.current.textPrimary)
-                    Spacer(Modifier.weight(1f))
-                    Text(formatTime(durationMs), color = PlayerColors.current.textPrimary)
+                if (tunerSeekBarEnabled) {
+                    WatermelonTunerSeekBar(
+                        positionMs = position,
+                        durationMs = durationMs,
+                        onSeek = { viewModel.onIntent(UserIntent.Seek(it)) },
+                        onScrubChange = { run { lastInteraction = System.nanoTime(); ui.showControls() } },
+                        modifier = Modifier
+                    )
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                        Text(formatTime(position), color = PlayerColors.current.textPrimary)
+                        Spacer(Modifier.weight(1f))
+                        Text("-${formatTime((durationMs - position).coerceAtLeast(0L))}", color = PlayerColors.current.textPrimary)
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(formatTime(position), color = PlayerColors.current.textPrimary)
+                        Spacer(Modifier.weight(1f))
+                        Text(formatTime(durationMs), color = PlayerColors.current.textPrimary)
+                    }
+                    WatermelonSeekBar(
+                        positionMs = position,
+                        durationMs = durationMs,
+                        onSeek = { viewModel.onIntent(UserIntent.Seek(it)) },
+                        onScrubChange = { run { lastInteraction = System.nanoTime(); ui.showControls() } },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-                WatermelonSeekBar(
-                    positionMs = position,
-                    durationMs = durationMs,
-                    onSeek = { viewModel.onIntent(UserIntent.Seek(it)) },
-                    onScrubChange = { run { lastInteraction = System.nanoTime(); ui.showControls() } },
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
 
             // Control panel
@@ -581,6 +624,25 @@ fun PhonePlayerScreen(
                     onFavourite = { onFavourite?.invoke(!isFavourite) },
                     onAddToPlaylist = { onAddToPlaylist?.invoke() },
                     onDelete = { onDelete?.invoke() }
+                )
+            }
+        }
+
+        // ── Persistent thin progress line ────────────────────────────────────
+        // Sits at the very bottom edge of the video and is ALWAYS visible — independent of
+        // ui.controlsVisible. The tuner dial communicates position only relatively (ticks
+        // sliding under a fixed needle), so this gives an absolute, at-a-glance read of
+        // exactly where we are: white = watched, red = remaining. Deliberately very thin so
+        // it reads as a status line, not a second seek bar.
+        if (durationMs > 0) {
+            val watchedFraction = (position.toFloat() / durationMs).coerceIn(0f, 1f)
+            androidx.compose.foundation.Canvas(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(3.dp)
+            ) {
+                drawRect(color = Color.Red, size = size)
+                drawRect(
+                    color = Color.White,
+                    size = androidx.compose.ui.geometry.Size(size.width * watchedFraction, size.height)
                 )
             }
         }

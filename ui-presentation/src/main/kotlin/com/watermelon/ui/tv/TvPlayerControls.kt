@@ -30,22 +30,25 @@ import com.watermelon.ui.theme.WatermelonShapes
 import com.watermelon.ui.theme.WatermelonSpacing
 
 /**
- * D-Pad player controls (Manifest §8). Left/Right hold accelerates seek (2×/4×/8×) and
- * triggers the VHS animation; Up/Down nudges subtitle sync. Transport buttons are focusable
- * for remote navigation.
+ * D-Pad player controls (Manifest §8). Left/Right hold seeks (10s per repeat, matching the
+ * phone screen's swipe-to-seek granularity); Up/Down nudges subtitle sync in +/-100ms steps.
+ * Transport buttons (Previous / Play-Pause / Next) are focusable for remote navigation and are
+ * the guaranteed single-button-reachable controls — OK on Play/Pause toggles playback, which
+ * satisfies the "works with a partially-broken remote" requirement even if D-pad directions
+ * are the only other working input.
  *
- * **Priority fix (UI audit):** every button previously used bare `Modifier.focusable()` with
- * no visual treatment at all — a D-pad user had no way to see which button was focused before
- * pressing OK. Each button now gets a visible border + a subtle scale-up on focus, using
- * [PlayerColors.current.iconFocus] (Soft Teal) — a token Team 0 defined for exactly this
- * purpose but that had no consumer anywhere in the codebase until now. Teal (focus) is kept
- * deliberately distinct from Red ([PlayerColors.current.accent], used for pressed/active
- * state elsewhere), so "this is focused" and "this is active" never look the same on a TV
- * screen where hover doesn't exist.
+ * Previous/Next are omitted entirely (not just disabled) when there's no adjacent track, same
+ * convention as [com.watermelon.ui.screens.PhonePlayerScreen], so the row never shows a dead
+ * button a D-pad user could focus onto and press for no effect.
  */
 @Composable
 fun TvPlayerControls(
+    isPlaying: Boolean,
+    hasPreviousTrack: Boolean,
+    hasNextTrack: Boolean,
     onIntent: (UserIntent) -> Unit,
+    onSkipPrevious: () -> Unit,
+    onSkipNext: () -> Unit,
     onSubtitleNudge: (Long) -> Unit,
     onSeekHold: (direction: Int) -> Unit,
     modifier: Modifier = Modifier
@@ -66,8 +69,16 @@ fun TvPlayerControls(
             },
         horizontalArrangement = Arrangement.spacedBy(WatermelonSpacing.md)
     ) {
-        TvFocusableButton(label = "Play", onClick = { onIntent(UserIntent.Resume) })
-        TvFocusableButton(label = "Pause", onClick = { onIntent(UserIntent.Pause) })
+        if (hasPreviousTrack) {
+            TvFocusableButton(label = "Previous", onClick = onSkipPrevious)
+        }
+        TvFocusableButton(
+            label = if (isPlaying) "Pause" else "Play",
+            onClick = { onIntent(if (isPlaying) UserIntent.Pause else UserIntent.Resume) }
+        )
+        if (hasNextTrack) {
+            TvFocusableButton(label = "Next", onClick = onSkipNext)
+        }
     }
 }
 

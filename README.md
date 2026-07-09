@@ -27,10 +27,10 @@ Strict unidirectional MVI. Every layer talks through plain Kotlin interfaces def
 | `common-interfaces` | Pure-Kotlin contracts: repositories, `PlaybackController`, models, `VhsTier`, `UserIntent`. |
 | `playback-engine` | Media3/ExoPlayer service + MediaSession, `PlaybackControllerImpl`, sleep timer, VHS renderers (Tier A/B AGSL, Tier C PNG). |
 | `library-storage` | Two-phase MediaStore indexer, hand-written `SQLiteOpenHelper` + idempotent migration ladder, repository impls. |
-| `subtitle-engine` | OpenSubtitles hasher, Ktor client with mirror rotation, Linear-Drift / Lexical-Anchor sync. |
+| `subtitle-engine` | OpenSubtitles hasher, Ktor client with mirror rotation, Linear-Drift sync. |
 | `ui-presentation` | Compose screens, components, ViewModels, TV layouts, RTL theme. |
 | `app` | Single `MainActivity`, NavHost, manifest, string resources (en/ar/fa). |
-| `benchmarks` | Macrobenchmarks (scroll, startup) + migration-ladder test. |
+| `benchmarks` | Macrobenchmarks (scroll, startup). Migration-ladder gate lives in `library-storage`'s androidTest — see Quality gates below. |
 
 ## Build
 

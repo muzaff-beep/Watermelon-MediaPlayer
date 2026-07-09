@@ -24,7 +24,6 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.tv.material)           // TV support
     implementation(libs.coil.compose)
     implementation(libs.coil.video)
     implementation(libs.lottie.compose)

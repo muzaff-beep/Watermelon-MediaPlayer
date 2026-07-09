@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.StateFlow
 interface PlaybackController {
     val playbackState: StateFlow<PlaybackState>
     val currentPositionMs: StateFlow<Long>
-    val isSeekingFast: StateFlow<Boolean>
     val repeatMode: StateFlow<RepeatMode>
     val shuffleEnabled: StateFlow<Boolean>
     val sleepTimerRemainingMs: StateFlow<Long>
@@ -23,6 +22,5 @@ interface PlaybackController {
     fun setShuffle(enabled: Boolean)
     fun setSleepTimer(mode: SleepTimerMode)
     fun cancelSleepTimer()
-    fun setVhsIntensity(level: Float)            // 0.0f (off) .. 1.0f (high)
     fun takeScreenshot(): String?                // returns local file path or null
 }

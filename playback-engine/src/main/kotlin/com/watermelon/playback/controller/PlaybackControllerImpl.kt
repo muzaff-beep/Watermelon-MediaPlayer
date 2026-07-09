@@ -50,13 +50,11 @@ class PlaybackControllerImpl(
 
     private val _playbackState   = MutableStateFlow(PlaybackState.IDLE)
     private val _currentPosition = MutableStateFlow(0L)
-    private val _isSeekingFast   = MutableStateFlow(false)
     private val _repeatMode      = MutableStateFlow(RepeatMode.NONE)
     private val _shuffleEnabled  = MutableStateFlow(false)
 
     override val playbackState: StateFlow<PlaybackState>  = _playbackState.asStateFlow()
     override val currentPositionMs: StateFlow<Long>       = _currentPosition.asStateFlow()
-    override val isSeekingFast: StateFlow<Boolean>        = _isSeekingFast.asStateFlow()
     override val repeatMode: StateFlow<RepeatMode>        = _repeatMode.asStateFlow()
     override val shuffleEnabled: StateFlow<Boolean>       = _shuffleEnabled.asStateFlow()
 
@@ -264,8 +262,6 @@ class PlaybackControllerImpl(
         sleepTimer.cancel()
         pendingSleepMode = null
     }
-
-    override fun setVhsIntensity(level: Float) { _isSeekingFast.value = level > 0f }
 
     override fun takeScreenshot(): String? {
         val bitmap = screenshotProvider?.invoke() ?: return null

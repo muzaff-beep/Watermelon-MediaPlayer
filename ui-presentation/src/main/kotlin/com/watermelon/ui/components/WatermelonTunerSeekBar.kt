@@ -57,6 +57,16 @@ fun WatermelonTunerSeekBar(
     var scrubPositionMs by remember { mutableStateOf(0L) }
     var dragAccumPx by remember { mutableStateOf(0f) }
 
+    // If this composable is removed from the tree mid-drag — e.g. the user toggles the
+    // tuner seek bar off in Settings while actively scrubbing, or navigates away — neither
+    // onDragEnd nor onDragCancel fires (Compose just tears the pointerInput coroutine down),
+    // so onScrubChange(false) would otherwise never be called and the caller's "currently
+    // seeking" state gets stuck true forever, along with whatever visual indicator it
+    // drives. Force it closed on disposal so scrubbing can never outlive this composable.
+    DisposableEffect(Unit) {
+        onDispose { if (scrubbing) onScrubChange(false) }
+    }
+
     val livePositionMs = positionMs.coerceIn(0L, durationMs.coerceAtLeast(0L))
     val displayPositionMs = if (scrubbing) scrubPositionMs else livePositionMs
     val colors = PlayerColors.current
@@ -150,9 +160,22 @@ private fun DrawScope.drawTunerDial(
         // Every 10th tick (5 seconds) is a "major" mark — taller, like the numbered
         // frequency ticks on a radio dial. The rest are short minor ticks.
         val isMajor = (tickTimeMs / tickIntervalMs) % 10 == 0L
-        val tickH = if (isMajor) size.height * 0.7f else size.height * 0.4f
+        val baseTickH = if (isMajor) size.height * 0.7f else size.height * 0.4f
         val tickW = if (isMajor) 2.5f else 1.5f
-        val alpha = 1f - (kotlin.math.abs(x - cx) / (size.width / 2f)).coerceIn(0f, 1f) * 0.6f
+
+        // Distance from the center pointer, 0 at center → 1 at either edge.
+        val distFrac = (kotlin.math.abs(x - cx) / (size.width / 2f)).coerceIn(0f, 1f)
+
+        // Cylinder/barrel falloff: height and alpha both fall off with distance from
+        // center, using an eased curve (ease-in, distFrac²) rather than linear — this
+        // keeps ticks near the pointer close to full size for longer, then tapers faster
+        // toward the edges, reading as a curved surface turning away from the viewer
+        // (like film sprockets around a reel, or a rotary dial seen edge-on) instead of a
+        // flat bar that's simply dimmer at the ends. Height never fully collapses to 0 —
+        // floored at 25% of base — so edge ticks stay visible as "receding," not erased.
+        val falloff = 1f - (distFrac * distFrac)
+        val tickH = baseTickH * (0.25f + 0.75f * falloff)
+        val alpha = 1f - distFrac * 0.6f
 
         drawRoundRect(
             color = colors.seekBarTrack.copy(alpha = colors.seekBarTrack.alpha.coerceAtLeast(0.5f) * alpha + 0.2f),

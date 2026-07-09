@@ -1,6 +1,7 @@
 package com.watermelon.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,7 +41,13 @@ fun FolderListItem(
     modifier: Modifier = Modifier,
     itemSize: ItemSize = ItemSize.MEDIUM,
     isGrid: Boolean = false,
-    @Suppress("UNUSED_PARAMETER") isScrollingFast: Boolean = false
+    @Suppress("UNUSED_PARAMETER") isScrollingFast: Boolean = false,
+    // Optional shared interaction source: null (default) preserves prior behavior exactly —
+    // clickable() creates and owns its own source internally. Callers that need to read this
+    // row's real focus/press state externally (e.g. TvFolderBrowserScreen drawing a focus
+    // ring) pass their own source in, so the ring reflects the same interactions clickable()
+    // itself reacts to instead of a second, disconnected one.
+    interactionSource: MutableInteractionSource? = null
 ) {
     // Size-dependent values — gaps are large so the difference is obvious.
     val iconDp: Dp = when (itemSize) {
@@ -66,9 +73,18 @@ fun FolderListItem(
         if (folder.totalDurationMs > 0L) formatDuration(folder.totalDurationMs) else "--:--"
     }"
 
-    val clickMod = modifier
-        .clip(WatermelonShapes.card)
-        .clickable { onClick(folder) }
+    val clickMod = if (interactionSource != null) {
+        modifier
+            .clip(WatermelonShapes.card)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.material3.ripple.ripple()
+            ) { onClick(folder) }
+    } else {
+        modifier
+            .clip(WatermelonShapes.card)
+            .clickable { onClick(folder) }
+    }
 
     if (isGrid) {
         Column(

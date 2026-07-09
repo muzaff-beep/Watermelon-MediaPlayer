@@ -1,11 +1,11 @@
 package com.watermelon.ui.tv
 
 import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,11 +37,17 @@ import com.watermelon.ui.viewmodel.FolderViewModel
  * focus" color (see [com.watermelon.ui.theme.PlayerColors.Scheme.iconFocus] for the Canvas-side
  * equivalent used in [TvPlayerControls]), so focus never reads as if the folder were already
  * selected.
+ *
+ * A focusable Settings row is pinned to the top of the list — until now this screen was the
+ * entire TV app's only reachable surface with no path to Settings at all, so VHS/subtitle/
+ * tuner-seekbar preferences (all set from [com.watermelon.ui.screens.SettingsScreen]) were
+ * unreachable on TV regardless of remote input.
  */
 @Composable
 fun TvFolderBrowserScreen(
     viewModel: FolderViewModel,
     onFolderClick: (FolderNode) -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val folders by viewModel.folderTree.collectAsStateWithLifecycle()
@@ -59,14 +65,36 @@ fun TvFolderBrowserScreen(
             ),
         verticalArrangement = Arrangement.spacedBy(WatermelonSpacing.sm)
     ) {
+        item(key = "tv_settings_entry") {
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
+            androidx.compose.material3.Surface(
+                onClick = onSettingsClick,
+                interactionSource = interaction,
+                shape = WatermelonShapes.card,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = if (focused) 3.dp else 0.dp,
+                        color = if (focused) MaterialTheme.colorScheme.secondary else Color.Transparent,
+                        shape = WatermelonShapes.card
+                    )
+            ) {
+                androidx.compose.material3.Text(
+                    text = "Settings",
+                    modifier = Modifier.padding(WatermelonSpacing.md)
+                )
+            }
+        }
         items(folders, key = { it.path }) { folder ->
             val interaction = remember { MutableInteractionSource() }
             val focused by interaction.collectIsFocusedAsState()
             FolderListItem(
                 folder = folder,
                 onClick = onFolderClick,
+                interactionSource = interaction,
                 modifier = Modifier
-                    .focusable(interactionSource = interaction)
                     .border(
                         width = if (focused) 3.dp else 0.dp,
                         color = if (focused) MaterialTheme.colorScheme.secondary else Color.Transparent,

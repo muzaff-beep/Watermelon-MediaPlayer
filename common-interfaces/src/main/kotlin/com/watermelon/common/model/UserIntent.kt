@@ -10,6 +10,5 @@ sealed class UserIntent {
     data class SetSpeed(val speed: Float) : UserIntent()
     data object Pause : UserIntent()
     data object Resume : UserIntent()
-    data class SetVhsIntensity(val level: Float) : UserIntent()
     data object RefreshLibrary : UserIntent()
 }

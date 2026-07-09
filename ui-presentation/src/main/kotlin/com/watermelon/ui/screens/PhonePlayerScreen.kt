@@ -129,7 +129,6 @@ fun PhonePlayerScreen(
     val scope = rememberCoroutineScope()
 
     val position by viewModel.currentPositionMs.collectAsStateWithLifecycle()
-    val isSeekingFast by viewModel.isSeekingFast.collectAsStateWithLifecycle()
     val playbackState by viewModel.playbackState.collectAsStateWithLifecycle()
     val repeatMode by viewModel.repeatMode.collectAsStateWithLifecycle()
     val isShuffled by viewModel.shuffleEnabled.collectAsStateWithLifecycle()
@@ -170,6 +169,17 @@ fun PhonePlayerScreen(
     var holdSpeed by remember { mutableFloatStateOf(2f) }
     var seekFrac by remember { mutableFloatStateOf(0f) }
 
+    // Real "user is actively dragging a seek bar" signal. NOT sourced from
+    // viewModel.isSeekingFast — that flow is written only by
+    // PlaybackControllerImpl.setVhsIntensity(level > 0f), which has nothing to do with
+    // scrubbing; it's driven by VHS effect intensity, and UserIntent.SetVhsIntensity is
+    // never even dispatched anywhere in the app, so that flag was permanently false in
+    // practice. Scrub state is inherently local UI-gesture state (the playback controller
+    // has no concept of "a finger is on the seek bar"), so it's tracked here directly from
+    // the seek bars' onScrubChange callbacks instead of round-tripping through the
+    // controller.
+    var isScrubbingSeekBar by remember { mutableStateOf(false) }
+
     var currentVolume by remember { mutableIntStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)) }
     var volumeFraction by remember {
         mutableFloatStateOf(if (maxVolume > 0) currentVolume.toFloat() / maxVolume else 0f)
@@ -195,7 +205,7 @@ fun PhonePlayerScreen(
     // ── Auto-hide: a single timer reset by any interaction. Stays 5s minimum, and never
     //    hides while paused, scrubbing, holding, panel open, or locked.
     //
-    //    isSeekingFast/isHolding must be keys here, not just checked after delay() —
+    //    isScrubbingSeekBar/isHolding must be keys here, not just checked after delay() —
     //    otherwise a scrub or fast-forward hold that starts and finishes inside the 5s
     //    window doesn't restart the timer, and controls can vanish mid-gesture right as
     //    the user reaches for a button. Keying on them cancels + relaunches this effect
@@ -203,14 +213,14 @@ fun PhonePlayerScreen(
     var lastInteraction by remember { mutableLongStateOf(0L) }
     LaunchedEffect(
         lastInteraction, ui.controlsVisible, isPlaying, showControlPanel, ui.isLocked,
-        isSeekingFast, isHolding
+        isScrubbingSeekBar, isHolding
     ) {
-        if (isSeekingFast || isHolding) return@LaunchedEffect
+        if (isScrubbingSeekBar || isHolding) return@LaunchedEffect
         if (ui.controlsVisible && isPlaying && !showControlPanel && !ui.isLocked) {
             kotlinx.coroutines.delay(5_000)
             // Re-check we're still idle before hiding (belt-and-suspenders: the key
             // restart above should already cover this, but keep the guard).
-            if (!isSeekingFast && !isHolding) ui.hideControls()
+            if (!isScrubbingSeekBar && !isHolding) ui.hideControls()
         }
     }
     LaunchedEffect(showVolumeIndicator) { if (showVolumeIndicator) { kotlinx.coroutines.delay(1_500); showVolumeIndicator = false } }
@@ -553,7 +563,11 @@ fun PhonePlayerScreen(
                         positionMs = position,
                         durationMs = durationMs,
                         onSeek = { viewModel.onIntent(UserIntent.Seek(it)) },
-                        onScrubChange = { run { lastInteraction = System.nanoTime(); ui.showControls() } },
+                        onScrubChange = { scrubbing ->
+                            lastInteraction = System.nanoTime()
+                            isScrubbingSeekBar = scrubbing
+                            ui.showControls()
+                        },
                         modifier = Modifier
                     )
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
@@ -571,7 +585,11 @@ fun PhonePlayerScreen(
                         positionMs = position,
                         durationMs = durationMs,
                         onSeek = { viewModel.onIntent(UserIntent.Seek(it)) },
-                        onScrubChange = { run { lastInteraction = System.nanoTime(); ui.showControls() } },
+                        onScrubChange = { scrubbing ->
+                            lastInteraction = System.nanoTime()
+                            isScrubbingSeekBar = scrubbing
+                            ui.showControls()
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

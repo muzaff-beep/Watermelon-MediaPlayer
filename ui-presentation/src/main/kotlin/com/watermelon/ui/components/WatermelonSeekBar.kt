@@ -49,6 +49,14 @@ fun WatermelonSeekBar(
     var scrubFraction by remember { mutableStateOf(0f) }
     var widthPx by remember { mutableStateOf(1f) }
 
+    // See WatermelonTunerSeekBar's identical DisposableEffect for why this is needed:
+    // onDragEnd/onDragCancel never fire if this composable is torn down mid-drag, so
+    // without this, scrubbing (and the caller's derived "currently seeking" state) can get
+    // stuck true forever.
+    DisposableEffect(Unit) {
+        onDispose { if (scrubbing) onScrubChange(false) }
+    }
+
     val liveFraction = if (durationMs > 0)
         (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val fraction = if (scrubbing) scrubFraction else liveFraction

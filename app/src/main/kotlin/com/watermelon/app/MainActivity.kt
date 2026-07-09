@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +44,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.ui.PlayerView
@@ -80,6 +82,7 @@ import com.watermelon.ui.screens.DesignSystemScreen
 import com.watermelon.ui.screens.FolderBrowserScreen
 import com.watermelon.ui.screens.FolderVisibilityScreen
 import com.watermelon.ui.screens.PhonePlayerScreen
+import com.watermelon.ui.screens.PlaylistsScreen
 import com.watermelon.ui.screens.ScreenshotMode
 import com.watermelon.ui.screens.SettingsScreen
 import com.watermelon.ui.screens.SettingsState
@@ -87,6 +90,7 @@ import com.watermelon.ui.screens.VideoListScreen
 import com.watermelon.ui.theme.WatermelonTheme
 import com.watermelon.ui.viewmodel.FolderViewModel
 import com.watermelon.ui.viewmodel.PlayerViewModel
+import com.watermelon.ui.viewmodel.PlaylistViewModel
 import com.watermelon.ui.viewmodel.VideoListViewModel
 import kotlinx.coroutines.launch
 
@@ -438,7 +442,8 @@ class MainActivity : ComponentActivity() {
                         com.watermelon.ui.screens.VhsIntensity.valueOf(
                             prefs.getString("vhs_intensity", "MED") ?: "MED"
                         )
-                    }.getOrDefault(com.watermelon.ui.screens.VhsIntensity.MED)
+                    }.getOrDefault(com.watermelon.ui.screens.VhsIntensity.MED),
+                    tunerSeekBarEnabled = prefs.getBoolean("tuner_seekbar_enabled", true)
                 )
             )
         }
@@ -454,17 +459,49 @@ class MainActivity : ComponentActivity() {
                 val vm = remember {
                     FolderViewModel(folderRepository, mediaRepository, playlistRepository, settingsStore)
                 }
-                FolderBrowserScreen(
+                val onFolderClick: (com.watermelon.common.model.FolderNode) -> Unit = { folder ->
+                    if (folder.isPlaylist) {
+                        navController.navigate("videos/${Uri.encode(folder.playlistId!!)}?isPlaylist=true")
+                    } else {
+                        navController.navigate("videos/${Uri.encode(folder.path)}?isPlaylist=false")
+                    }
+                }
+                val isTelevision = remember {
+                    com.watermelon.ui.screens.PlayerDeviceRouting.isTelevision(this@MainActivity)
+                }
+                if (isTelevision) {
+                    // D-pad-navigable row list with visible focus rings — no grid/sort/filter
+                    // chrome, which are touch affordances that don't map to a 10-foot D-pad UI.
+                    com.watermelon.ui.tv.TvFolderBrowserScreen(
+                        viewModel = vm,
+                        onFolderClick = onFolderClick,
+                        onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                    )
+                } else {
+                    FolderBrowserScreen(
+                        viewModel = vm,
+                        onFolderClick = onFolderClick,
+                        onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                    )
+                }
+            }
+            composable(Routes.PLAYLISTS) {
+                val vm = remember { PlaylistViewModel(playlistRepository) }
+                PlaylistsScreen(
                     viewModel = vm,
-                    onFolderClick = { folder ->
-                        if (folder.isPlaylist) {
-                            navController.navigate("videos/${Uri.encode(folder.playlistId!!)}?isPlaylist=true")
-                        } else {
-                            navController.navigate("videos/${Uri.encode(folder.path)}?isPlaylist=false")
-                        }
-                    },
-                    onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                    onPlaylistClick = { playlist ->
+                        navController.navigate("videos/${Uri.encode(playlist.id)}?isPlaylist=true")
+                    }
                 )
+            }
+            composable(Routes.FAVORITES) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(
+                        "videos/${Uri.encode(com.watermelon.common.model.SystemPlaylist.ID_FAVOURITES)}?isPlaylist=true"
+                    ) {
+                        popUpTo(Routes.FAVORITES) { inclusive = true }
+                    }
+                }
             }
             composable(
                 route = "videos/{folderPath}?isPlaylist={isPlaylist}",
@@ -528,23 +565,103 @@ class MainActivity : ComponentActivity() {
                         com.watermelon.ui.screens.VhsIntensity.MED -> 0.6f
                         com.watermelon.ui.screens.VhsIntensity.HIGH -> 1f
                     }
+                    val isTelevision = remember {
+                        com.watermelon.ui.screens.PlayerDeviceRouting.isTelevision(this@MainActivity)
+                    }
+                    val subtitleTrackState = run {
+                        var track by remember(mediaUri) {
+                            mutableStateOf<com.watermelon.common.model.ParsedSubtitle?>(null)
+                        }
+                        LaunchedEffect(mediaUri) {
+                            track = discoverSubtitle(mediaUri)
+                        }
+                        track
+                    }
+                    // controller.duration is a plain Media3 Player getter, not something
+                    // Compose observes — reading it directly in the composable body means it
+                    // only updates when something else happens to trigger recomposition, with
+                    // no guarantee that happens exactly when Media3 resolves the real duration.
+                    // In practice this mostly "worked" because position ticks frequently and
+                    // incidentally forces recomposition, EXCEPT right after opening a video:
+                    // duration is C.TIME_UNSET (0 here) until playback reaches STATE_READY, so
+                    // any seek attempted in that window — on either seek bar — silently
+                    // coerced to position 0. A real Player.Listener fixes this by updating
+                    // state exactly when Media3 says duration actually changed.
+                    var durationMs by remember(mediaUri) { mutableStateOf(controller.duration.coerceAtLeast(0L)) }
+                    DisposableEffect(controller, mediaUri) {
+                        val listener = object : Player.Listener {
+                            override fun onEvents(player: Player, events: Player.Events) {
+                                if (events.containsAny(
+                                        Player.EVENT_TIMELINE_CHANGED,
+                                        Player.EVENT_MEDIA_ITEM_TRANSITION,
+                                        Player.EVENT_PLAYBACK_STATE_CHANGED
+                                    )
+                                ) {
+                                    durationMs = player.duration.coerceAtLeast(0L)
+                                }
+                            }
+                        }
+                        controller.addListener(listener)
+                        durationMs = controller.duration.coerceAtLeast(0L)
+                        onDispose { controller.removeListener(listener) }
+                    }
+
+                    if (isTelevision) {
+                        // TV is a separate composition (Manifest §8) — D-pad-first, no touch
+                        // gestures, no VHS shader/PiP/rotation. Shares only the playback core
+                        // and video surface with the phone screen.
+                        com.watermelon.ui.tv.TvPlayerScreen(
+                            viewModel = vm,
+                            durationMs = durationMs,
+                            hasPreviousTrack = remember(mediaUri) {
+                                com.watermelon.ui.screens.PlaybackQueue.previousOf(mediaUri) != null
+                            },
+                            hasNextTrack = remember(mediaUri) {
+                                com.watermelon.ui.screens.PlaybackQueue.nextOf(mediaUri) != null
+                            },
+                            onSkipPrevious = {
+                                val prev = com.watermelon.ui.screens.PlaybackQueue.previousOf(mediaUri)
+                                if (prev != null) {
+                                    navController.navigate("player/${Uri.encode(prev)}") {
+                                        popUpTo("player/{uri}") { inclusive = true }
+                                    }
+                                } else {
+                                    vm.onIntent(UserIntent.Seek(0L))
+                                }
+                            },
+                            onSkipNext = {
+                                com.watermelon.ui.screens.PlaybackQueue.nextOf(mediaUri)?.let { next ->
+                                    navController.navigate("player/${Uri.encode(next)}") {
+                                        popUpTo("player/{uri}") { inclusive = true }
+                                    }
+                                }
+                            },
+                            subtitleTrack = subtitleTrackState,
+                            surface = { modifier ->
+                                AndroidView(
+                                    modifier = modifier,
+                                    factory = { ctx ->
+                                        val view = android.view.LayoutInflater.from(ctx)
+                                            .inflate(R.layout.player_view_texture, null) as PlayerView
+                                        view.player = controller
+                                        view.useController = false
+                                        view
+                                    }
+                                )
+                            }
+                        )
+                        return@composable
+                    }
                     PhonePlayerScreen(
                         viewModel = vm,
                         vhs = vhsController,
                         vhsEnabled = settingsState.vhsEnabled,
                         vhsIntensity = mappedIntensity,
+                        tunerSeekBarEnabled = settingsState.tunerSeekBarEnabled,
                         isInPipMode = isPiPActive,
                         onBack = { navController.popBackStack() },
-                        durationMs = controller.duration.coerceAtLeast(0L),
-                        subtitleTrack = run {
-                            var track by remember(mediaUri) {
-                                mutableStateOf<com.watermelon.common.model.ParsedSubtitle?>(null)
-                            }
-                            LaunchedEffect(mediaUri) {
-                                track = discoverSubtitle(mediaUri)
-                            }
-                            track
-                        },
+                        durationMs = durationMs,
+                        subtitleTrack = subtitleTrackState,
                         uri = mediaUri,
                         screenshotMode = settingsState.screenshotMode,
                         initialBrightness = savedBrightness,
@@ -634,6 +751,7 @@ class MainActivity : ComponentActivity() {
                         prefs.edit()
                             .putBoolean("vhs_enabled", newState.vhsEnabled)
                             .putString("vhs_intensity", newState.vhsIntensity.name)
+                            .putBoolean("tuner_seekbar_enabled", newState.tunerSeekBarEnabled)
                             .apply()
                         if (newState.pureDark != pureDarkTheme) {
                             onPureDarkThemeChange(newState.pureDark)
@@ -693,6 +811,8 @@ class MainActivity : ComponentActivity() {
         const val SETTINGS = "settings"
         const val FOLDER_VISIBILITY = "folder_visibility"
         const val DESIGN_SYSTEM = "design_system"  // NEW
+        const val PLAYLISTS = "playlists"
+        const val FAVORITES = "favorites"
     }
 
     private enum class PiPTier { SMALL, MID, EXPANDED }

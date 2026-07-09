@@ -18,7 +18,6 @@ class PlayerViewModel(
 
     val playbackState: StateFlow<PlaybackState> = controller.playbackState
     val currentPositionMs: StateFlow<Long>      = controller.currentPositionMs
-    val isSeekingFast: StateFlow<Boolean>       = controller.isSeekingFast
     val repeatMode: StateFlow<RepeatMode>       = controller.repeatMode
     val shuffleEnabled: StateFlow<Boolean>      = controller.shuffleEnabled
     val sleepTimerRemainingMs: StateFlow<Long>  = controller.sleepTimerRemainingMs
@@ -31,7 +30,6 @@ class PlayerViewModel(
             is UserIntent.SetSpeed       -> controller.setSpeed(intent.speed)
             UserIntent.Pause             -> controller.pause()
             UserIntent.Resume            -> controller.resume()
-            is UserIntent.SetVhsIntensity -> controller.setVhsIntensity(intent.level)
             UserIntent.RefreshLibrary    -> Unit
         }
     }

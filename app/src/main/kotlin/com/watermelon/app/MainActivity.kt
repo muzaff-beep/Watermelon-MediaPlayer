@@ -290,7 +290,14 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         com.watermelon.common.util.FileLogger.i("PiP",
             "onUserLeaveHint — isPiPActive=$isPiPActive mode=$playbackMode")
-        if (isPiPActive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val controller = playbackController
+        val isPlaying = controller?.playbackState?.value == PlaybackState.PLAYING
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            playbackMode == PlaybackMode.NORMAL && isPlaying
+        ) {
+            playbackMode = PlaybackMode.PIP
+            enterPiPMode()
+        } else if (isPiPActive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             enterPiPMode()
         }
     }
@@ -391,7 +398,6 @@ class MainActivity : ComponentActivity() {
             }
             .build()
     }
-
 
     private fun tierForWidth(widthDp: Int): PiPTier = when {
         widthDp < 200 -> PiPTier.SMALL
@@ -527,6 +533,7 @@ class MainActivity : ComponentActivity() {
                         vhs = vhsController,
                         vhsEnabled = settingsState.vhsEnabled,
                         vhsIntensity = mappedIntensity,
+                        isInPipMode = isPiPActive,
                         onBack = { navController.popBackStack() },
                         durationMs = controller.duration.coerceAtLeast(0L),
                         subtitleTrack = run {

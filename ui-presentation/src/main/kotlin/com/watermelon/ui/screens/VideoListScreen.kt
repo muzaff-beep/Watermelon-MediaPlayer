@@ -28,6 +28,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -406,14 +407,59 @@ fun VideoListScreen(
     }
 
     if (showPlaylistPicker) {
+        var showCreateField by remember { mutableStateOf(false) }
+        var newPlaylistName by remember { mutableStateOf("") }
+
         AlertDialog(
             onDismissRequest = { showPlaylistPicker = false },
             title = { Text("Add to playlist", color = WatermelonColors.DarkOnSurface) },
             text = {
                 Column {
-                    availablePlaylists.filter {
+                    if (showCreateField) {
+                        TextField(
+                            value = newPlaylistName,
+                            onValueChange = { newPlaylistName = it },
+                            placeholder = { Text("Playlist name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            TextButton(onClick = {
+                                showCreateField = false
+                                newPlaylistName = ""
+                            }) {
+                                Text("Cancel", color = WatermelonColors.DarkOnSurfaceVariant)
+                            }
+                            TextButton(
+                                onClick = {
+                                    val name = newPlaylistName.trim()
+                                    if (name.isNotEmpty()) {
+                                        viewModel.createPlaylistAndAddSelected(name)
+                                        showPlaylistPicker = false
+                                        showCreateField = false
+                                        newPlaylistName = ""
+                                    }
+                                }
+                            ) {
+                                Text("Create", color = WatermelonColors.DarkOnSurface)
+                            }
+                        }
+                    } else {
+                        TextButton(
+                            onClick = { showCreateField = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("+ Create new playlist", color = WatermelonColors.DarkOnSurface)
+                        }
+                    }
+
+                    val userPlaylists = availablePlaylists.filter {
                         it.type == com.watermelon.common.model.PlaylistType.USER
-                    }.forEach { playlist ->
+                    }
+                    if (userPlaylists.isNotEmpty()) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    userPlaylists.forEach { playlist ->
                         TextButton(
                             onClick = {
                                 viewModel.addSelectedToPlaylist(playlist.id)
@@ -423,13 +469,6 @@ fun VideoListScreen(
                         ) {
                             Text(playlist.name, color = WatermelonColors.DarkOnSurface)
                         }
-                    }
-                    if (availablePlaylists.none { it.type == com.watermelon.common.model.PlaylistType.USER }) {
-                        Text(
-                            "No playlists yet. Create one in the folder browser.",
-                            style = WatermelonTypography.typography.bodySmall,
-                            color = WatermelonColors.DarkOnSurfaceVariant
-                        )
                     }
                 }
             },

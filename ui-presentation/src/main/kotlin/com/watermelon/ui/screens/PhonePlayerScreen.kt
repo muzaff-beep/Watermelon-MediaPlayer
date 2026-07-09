@@ -117,6 +117,7 @@ fun PhonePlayerScreen(
     onAddToPlaylist: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     onLockChanged: ((Boolean) -> Unit)? = null,
+    isInPipMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -147,6 +148,17 @@ fun PhonePlayerScreen(
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var screenshotMessage by remember { mutableStateOf<String?>(null) }
     var isPiPEnabled by remember { mutableStateOf(false) }
+
+    // Keep local PiP flag in sync with the real system PiP state, and make sure
+    // controls come back once the user returns from PiP to full screen —
+    // otherwise the screen is stuck showing no controls (ui.hideControls() was
+    // called on entry but nothing ever undid it on exit).
+    LaunchedEffect(isInPipMode) {
+        isPiPEnabled = isInPipMode
+        if (!isInPipMode) {
+            ui.showControls()
+        }
+    }
     var isBackgroundEnabled by remember { mutableStateOf(false) }
 
     // Gesture transient state

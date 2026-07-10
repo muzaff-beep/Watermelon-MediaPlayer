@@ -19,9 +19,15 @@ import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,14 +35,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.ui.PlayerView
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -70,12 +80,15 @@ import com.watermelon.ui.screens.DesignSystemScreen
 import com.watermelon.ui.screens.FolderBrowserScreen
 import com.watermelon.ui.screens.FolderVisibilityScreen
 import com.watermelon.ui.screens.PhonePlayerScreen
+import com.watermelon.ui.screens.PlaylistsScreen
 import com.watermelon.ui.screens.ScreenshotMode
 import com.watermelon.ui.screens.SettingsScreen
+import com.watermelon.ui.screens.SettingsState
 import com.watermelon.ui.screens.VideoListScreen
 import com.watermelon.ui.theme.WatermelonTheme
 import com.watermelon.ui.viewmodel.FolderViewModel
 import com.watermelon.ui.viewmodel.PlayerViewModel
+import com.watermelon.ui.viewmodel.PlaylistViewModel
 import com.watermelon.ui.viewmodel.VideoListViewModel
 import kotlinx.coroutines.launch
 
@@ -279,7 +292,14 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         com.watermelon.common.util.FileLogger.i("PiP",
             "onUserLeaveHint — isPiPActive=$isPiPActive mode=$playbackMode")
-        if (isPiPActive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val controller = playbackController
+        val isPlaying = controller?.playbackState?.value == PlaybackState.PLAYING
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            playbackMode == PlaybackMode.NORMAL && isPlaying
+        ) {
+            playbackMode = PlaybackMode.PIP
+            enterPiPMode()
+        } else if (isPiPActive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             enterPiPMode()
         }
     }
@@ -420,7 +440,8 @@ class MainActivity : ComponentActivity() {
                         com.watermelon.ui.screens.VhsIntensity.valueOf(
                             prefs.getString("vhs_intensity", "MED") ?: "MED"
                         )
-                    }.getOrDefault(com.watermelon.ui.screens.VhsIntensity.MED)
+                    }.getOrDefault(com.watermelon.ui.screens.VhsIntensity.MED),
+                    tunerSeekBarEnabled = prefs.getBoolean("tuner_seekbar_enabled", true)
                 )
             )
         }
@@ -447,6 +468,24 @@ class MainActivity : ComponentActivity() {
                     },
                     onSettingsClick = { navController.navigate(Routes.SETTINGS) }
                 )
+            }
+            composable(Routes.PLAYLISTS) {
+                val vm = remember { PlaylistViewModel(playlistRepository) }
+                PlaylistsScreen(
+                    viewModel = vm,
+                    onPlaylistClick = { playlist ->
+                        navController.navigate("videos/${Uri.encode(playlist.id)}?isPlaylist=true")
+                    }
+                )
+            }
+            composable(Routes.FAVORITES) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(
+                        "videos/${Uri.encode(com.watermelon.common.model.SystemPlaylist.ID_FAVOURITES)}?isPlaylist=true"
+                    ) {
+                        popUpTo(Routes.FAVORITES) { inclusive = true }
+                    }
+                }
             }
             composable(
                 route = "videos/{folderPath}?isPlaylist={isPlaylist}",
@@ -515,6 +554,8 @@ class MainActivity : ComponentActivity() {
                         vhs = vhsController,
                         vhsEnabled = settingsState.vhsEnabled,
                         vhsIntensity = mappedIntensity,
+                        tunerSeekBarEnabled = settingsState.tunerSeekBarEnabled,
+                        isInPipMode = isPiPActive,
                         onBack = { navController.popBackStack() },
                         durationMs = controller.duration.coerceAtLeast(0L),
                         subtitleTrack = run {
@@ -615,6 +656,7 @@ class MainActivity : ComponentActivity() {
                         prefs.edit()
                             .putBoolean("vhs_enabled", newState.vhsEnabled)
                             .putString("vhs_intensity", newState.vhsIntensity.name)
+                            .putBoolean("tuner_seekbar_enabled", newState.tunerSeekBarEnabled)
                             .apply()
                         if (newState.pureDark != pureDarkTheme) {
                             onPureDarkThemeChange(newState.pureDark)
@@ -674,6 +716,9 @@ class MainActivity : ComponentActivity() {
         const val SETTINGS = "settings"
         const val FOLDER_VISIBILITY = "folder_visibility"
         const val DESIGN_SYSTEM = "design_system"  // NEW
+        const val PLAYLISTS = "playlists"
+        const val FAVORITES = "favorites"
     }
 
     private enum class PiPTier { SMALL, MID, EXPANDED }
+}

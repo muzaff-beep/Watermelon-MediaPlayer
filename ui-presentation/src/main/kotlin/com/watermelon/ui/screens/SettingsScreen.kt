@@ -50,6 +50,7 @@ data class SettingsState(
     val showFileSize: Boolean = false,
     val vhsEnabled: Boolean = true,
     val vhsIntensity: VhsIntensity = VhsIntensity.MED,
+    val tunerSeekBarEnabled: Boolean = true,
     val memorySafety: Boolean = false,
     val fullFolderAccess: Boolean = false,
     val screenshotMode: ScreenshotMode = ScreenshotMode.SINGLE,
@@ -149,6 +150,11 @@ fun SettingsScreen(
                         }
                         onStateChange(state.copy(vhsIntensity = next))
                     }
+
+                    ToggleRow(
+                        label = "Tuner-style seek bar",
+                        checked = state.tunerSeekBarEnabled
+                    ) { onStateChange(state.copy(tunerSeekBarEnabled = it)) }
                 }
             }
 

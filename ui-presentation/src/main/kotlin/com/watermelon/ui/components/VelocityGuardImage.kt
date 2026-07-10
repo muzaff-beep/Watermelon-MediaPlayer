@@ -52,6 +52,7 @@ fun VelocityGuardImage(
 ) {
     val context = LocalContext.current
 
+    @Suppress("ProduceStateDoesNotAssignValue")
     val result by produceState<ThumbnailResult>(initialValue = ThumbnailResult.Loading, uri, durationMs) {
         value = ThumbnailResult.Loading
         value = loadThumbnail(context, uri, durationMs)
@@ -64,7 +65,7 @@ fun VelocityGuardImage(
             is ThumbnailResult.Loaded -> Image(
                 bitmap             = r.bitmap.asImageBitmap(),
                 contentDescription = null,
-                contentScale       = ContentScale.Fit,
+                contentScale       = ContentScale.Crop,
                 modifier           = Modifier.fillMaxSize()
             )
             ThumbnailResult.Loading -> CircularProgressIndicator(

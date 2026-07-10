@@ -164,4 +164,14 @@ class VideoListViewModel(
             clearSelection()
         }
     }
+
+    fun createPlaylistAndAddSelected(name: String) {
+        val repo = playlistRepository ?: return
+        val uris = _selection.value.selectedUris.toList()
+        viewModelScope.launch {
+            val playlistId = repo.createPlaylist(name)
+            uris.forEach { repo.addToPlaylist(playlistId, it) }
+            clearSelection()
+        }
+    }
 }

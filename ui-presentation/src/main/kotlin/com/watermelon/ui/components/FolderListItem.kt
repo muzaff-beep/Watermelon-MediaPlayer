@@ -1,5 +1,6 @@
 package com.watermelon.ui.components
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -76,10 +77,9 @@ fun FolderListItem(
     val clickMod = if (interactionSource != null) {
         modifier
             .clip(WatermelonShapes.card)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = androidx.compose.material3.ripple.ripple()
-            ) { onClick(folder) }
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {
+                onClick(folder)
+            }
     } else {
         modifier
             .clip(WatermelonShapes.card)

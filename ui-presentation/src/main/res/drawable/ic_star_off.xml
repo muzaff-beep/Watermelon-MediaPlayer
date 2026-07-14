@@ -1,12 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
-    android:viewportHeight="24"
-    android:tint="?attr/colorControlNormal">
+    android:viewportHeight="24">
     <path
-        android:fillColor="@android:color/white"
-        android:fillType="evenOdd"
-        android:pathData="M12,17.27,18.18,21l-1.64,-7.03L22,9.24l-7.19,-0.61L12,2 9.19,8.63 2,9.24l5.46,4.73L5.82,21ZM12,15.4,8.24,17.67,9.24,13.39,5.92,10.51,10.3,10.13,12,6.1,13.71,10.14,18.09,10.52,14.77,13.4,15.77,17.68Z"/>
+        android:pathData="M12,3.6 C12.3,3.6 12.58,3.77 12.71,4.04 L14.84,8.44 L19.63,9.14 C20.23,9.23 20.47,9.97 20.03,10.4 L16.56,13.84 L17.38,18.67 C17.48,19.27 16.85,19.73 16.31,19.44 L12,16.98 L7.69,19.34 C7.15,19.63 6.52,19.17 6.62,18.57 L7.44,13.74 L3.97,10.3 C3.53,9.87 3.77,9.13 4.37,9.04 L9.16,8.34 L11.29,3.94 C11.42,3.67 11.7,3.5 12,3.5 Z"
+        android:fillType="nonZero"/>
+    <path
+        android:pathData="M4,4 L20,20"
+        android:fillType="nonZero"/>
 </vector>

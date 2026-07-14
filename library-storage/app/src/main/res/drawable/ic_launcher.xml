@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Watermelon launcher mark: pink rind, green flesh, dark seeds. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF35C759"
+        android:pathData="M54,10 A44,44 0 0 1 98,54 L10,54 A44,44 0 0 1 54,10 Z" />
+    <path
+        android:fillColor="#FFFF4D6D"
+        android:pathData="M54,10 A44,44 0 0 1 98,54 L92,54 A38,38 0 0 0 54,16 Z" />
+    <path android:fillColor="#FF00210B" android:pathData="M40,40 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path android:fillColor="#FF00210B" android:pathData="M60,44 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path android:fillColor="#FF00210B" android:pathData="M50,30 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+</vector>

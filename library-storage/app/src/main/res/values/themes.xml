@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. Compose drives the real theming (WatermelonTheme); this
+         provides the pre-Compose window background to avoid a flash on cold start. -->
+    <style name="Theme.Watermelon" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/pure_black</item>
+        <item name="android:statusBarColor">@color/pure_black</item>
+        <item name="android:navigationBarColor">@color/pure_black</item>
+    </style>
+</resources>

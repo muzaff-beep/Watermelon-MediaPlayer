@@ -1,0 +1,193 @@
+package com.watermelon.subtitle.repository
+
+import android.content.Context
+import com.watermelon.common.model.MediaItem
+import com.watermelon.common.model.ParsedSubtitle
+import com.watermelon.common.model.SubtitleTrack
+import com.watermelon.common.model.VideoQuery
+import com.watermelon.common.repository.SubtitleRepository
+import com.watermelon.common.util.FileLogger
+import com.watermelon.subtitle.hash.OpenSubtitlesHasher
+import com.watermelon.subtitle.network.SubtitleApiClient
+import com.watermelon.subtitle.source.LocalSidecarSourceImpl
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.utils.io.jvm.javaio.copyTo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+
+/**
+ * [SubtitleRepository] implementation.
+ *
+ * S1 priority order:
+ *   0. Local sidecar — scan folder beside the video for matching .srt / .ass files (offline)
+ *   1. Local cache   — previously downloaded subtitles
+ *   2. Remote API    — online lookup (only after user consent, S3)
+ *
+ * [parsedFor] provides the render-ready [ParsedSubtitle] for the player. The two-step model
+ * keeps [SubtitleTrack] (search candidates with download URLs) separate from [ParsedSubtitle]
+ * (timed, bidi-formatted cues ready for display).
+ */
+class SubtitleRepositoryImpl(
+    private val context: Context,
+    private val apiClient: SubtitleApiClient = SubtitleApiClient()
+) : SubtitleRepository {
+
+    private val sidecarSource = LocalSidecarSourceImpl(context)
+    private val downloadClient: HttpClient by lazy { HttpClient(Android) }
+    private val cacheDir: File by lazy {
+        File(context.cacheDir, "subtitles").apply { mkdirs() }
+    }
+
+    // ── SubtitleRepository interface ────────────────────────────────────────────
+
+    override suspend fun findSubtitles(
+        mediaItem: MediaItem,
+        preferredLanguages: List<String>
+    ): List<SubtitleTrack> = withContext(Dispatchers.IO) {
+        // 1. Local cache match first.
+        val cached = cachedTracks(mediaItem, preferredLanguages)
+        if (cached.isNotEmpty()) {
+            FileLogger.i("Subtitle", "cache hit: ${cached.size} track(s) for ${mediaItem.displayName}")
+            return@withContext cached
+        }
+        // 2. Remote lookup (placeholder until S3 wires the reachability probe).
+        val hash = runCatching { hashFor(mediaItem) }.getOrNull() ?: return@withContext emptyList()
+        FileLogger.i("Subtitle", "remote lookup: hash=$hash")
+        apiClient.query(hash, mediaItem.fileSize, preferredLanguages)
+    }
+
+    /**
+     * Allowed hosts for subtitle downloads — the same providers [MirrorRotator.DEFAULT]
+     * queries. The *search* request only ever goes to these hosts, but the JSON response
+     * body's `downloadUrl` field is attacker-influenced: it's returned by whichever mirror
+     * answered, and nothing before this point constrains it to point back at that same
+     * provider. Without this check, a compromised or malicious mirror (or a spoofed
+     * response) could redirect [downloadSubtitle] at an arbitrary internal address (cloud
+     * metadata endpoints, localhost services, etc.) and this app would fetch it and write
+     * the response straight to disk. Requiring https + a known host closes that gap.
+     */
+    private val allowedDownloadHosts = setOf(
+        "opensubtitles.com", "api.opensubtitles.com",
+        "opensubtitles.org", "rest.opensubtitles.org", "www.opensubtitles.org"
+    )
+
+    private fun isAllowedDownloadUrl(url: String): Boolean {
+        val parsed = runCatching { java.net.URI(url) }.getOrNull() ?: return false
+        val host = parsed.host?.lowercase() ?: return false
+        return parsed.scheme.equals("https", ignoreCase = true) &&
+            allowedDownloadHosts.any { host == it || host.endsWith(".$it") }
+    }
+
+    override suspend fun downloadSubtitle(track: SubtitleTrack): String =
+        withContext(Dispatchers.IO) {
+            require(isAllowedDownloadUrl(track.downloadUrl)) {
+                "Refusing to download subtitle from untrusted URL: ${track.downloadUrl}"
+            }
+            val target = File(cacheDir, fileNameFor(track))
+            target.outputStream().use { out ->
+                downloadClient.get(track.downloadUrl).bodyAsChannel().copyTo(out)
+            }
+            FileLogger.i("Subtitle", "downloaded: ${target.name}")
+            target.absolutePath
+        }
+
+    // ── S1 extension: parsed render-ready subtitle ──────────────────────────────
+
+    /**
+     * Returns a [ParsedSubtitle] ready for the player, using the S1 offline-first strategy:
+     *   1. Sidecar file in the video's folder
+     *   2. Previously downloaded + cached file
+     *   (Online fetch is triggered separately via [findSubtitles] + [downloadSubtitle])
+     */
+    suspend fun parsedFor(mediaItem: MediaItem, preferredLanguages: List<String>): ParsedSubtitle? =
+        withContext(Dispatchers.IO) {
+            // Step 0: local sidecar (no network, no user action required)
+            val query = VideoQuery(
+                displayName  = mediaItem.displayName,
+                parentFolder = mediaItem.parentFolder,
+                sizeBytes    = mediaItem.fileSize,
+                durationMs   = mediaItem.durationMs,
+                languages    = preferredLanguages
+            )
+            val sidecar = sidecarSource.findAndParse(query)
+            if (sidecar != null) {
+                FileLogger.i("Subtitle", "sidecar loaded: ${sidecar.cues.size} cues (${sidecar.language})")
+                return@withContext sidecar
+            }
+            // Step 1: cached download
+            val cachedFile = firstCachedFile(mediaItem, preferredLanguages)
+            if (cachedFile != null) {
+                FileLogger.i("Subtitle", "cache loaded: ${cachedFile.name}")
+                return@withContext parseCachedFile(cachedFile)
+            }
+            FileLogger.i("Subtitle", "no local subtitle for ${mediaItem.displayName}")
+            null
+        }
+
+    // ── Private helpers ─────────────────────────────────────────────────────────
+
+    private fun cachedTracks(mediaItem: MediaItem, langs: List<String>): List<SubtitleTrack> {
+        val prefix = safeKey(mediaItem.uri)
+        return cacheDir.listFiles { f -> f.name.startsWith(prefix) }
+            ?.mapNotNull { file ->
+                val lang = file.nameWithoutExtension.substringAfterLast('.', "")
+                if (langs.isEmpty() || lang in langs)
+                    SubtitleTrack(lang, file.name, file.toURI().toString(), rating = 0f)
+                else null
+            }.orEmpty()
+    }
+
+    private fun firstCachedFile(mediaItem: MediaItem, langs: List<String>): File? {
+        val prefix = safeKey(mediaItem.uri)
+        val files = cacheDir.listFiles { f -> f.name.startsWith(prefix) } ?: return null
+        if (langs.isEmpty()) return files.firstOrNull()
+        return langs.firstNotNullOfOrNull { lang ->
+            files.firstOrNull { it.nameWithoutExtension.endsWith(".$lang") }
+        } ?: files.firstOrNull()
+    }
+
+    private fun parseCachedFile(file: File): ParsedSubtitle? {
+        val content = runCatching { file.readText(Charsets.UTF_8) }.getOrNull() ?: return null
+        val lang = file.nameWithoutExtension.substringAfterLast('.', "").ifEmpty { null }
+        return when (file.extension.lowercase()) {
+            "srt" -> runCatching {
+                com.watermelon.subtitle.parser.SrtParser.parse(content, lang)
+            }.getOrNull()
+            else  -> null
+        }
+    }
+
+    /**
+     * Computes the real OpenSubtitles file hash (Manifest §6.1) for [mediaItem] so remote
+     * lookups actually match the provider's index. Requires random access to the file's raw
+     * bytes (first/last 64 KB), so for `content://` URIs we open a file descriptor via the
+     * ContentResolver rather than hashing a synthetic local key. Throws if the descriptor
+     * can't be opened or the file is too small to hash — callers already wrap this call in
+     * `runCatching` and fall back to an empty result.
+     */
+    private fun hashFor(mediaItem: MediaItem): String {
+        val uri = android.net.Uri.parse(mediaItem.uri)
+        context.contentResolver.openFileDescriptor(uri, "r").use { pfd ->
+            requireNotNull(pfd) { "Unable to open file descriptor for ${mediaItem.uri}" }
+            return OpenSubtitlesHasher.hash(pfd.fileDescriptor, mediaItem.fileSize)
+        }
+    }
+
+    private fun fileNameFor(track: SubtitleTrack): String =
+        "${safeKey(track.label)}.${track.language}.srt"
+
+    /**
+     * Derives a filesystem-safe cache key from [raw] (a content:// URI or similar). Uses
+     * SHA-256 rather than [String.hashCode] — hashCode is only 32 bits, so two different
+     * video URIs could collide and one video would silently serve another's cached
+     * subtitle. SHA-256's collision probability is negligible for this purpose.
+     */
+    private fun safeKey(raw: String): String =
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(raw.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+}

@@ -1,11 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
-    android:viewportHeight="24"
-    android:tint="?attr/colorControlNormal">
+    android:viewportHeight="24">
     <path
-        android:fillColor="@android:color/white"
-        android:pathData="M12,22q-2.075,0 -3.9,-0.787 -1.825,-0.788 -3.175,-2.138 -1.35,-1.35 -2.137,-3.175Q2,14.075 2,12q0,-2.075 0.788,-3.9 0.787,-1.825 2.137,-3.175 1.35,-1.35 3.175,-2.137Q9.925,2 12,2q0.4,0 0.788,0.038 0.387,0.037 0.762,0.112 0.375,0.1 0.55,0.45 0.175,0.35 -0.05,0.7 -0.375,0.575 -0.563,1.25 -0.187,0.675 -0.187,1.4 0,2.075 1.463,3.538Q15.925,10.85 18,10.85q0.725,0 1.4,-0.188 0.675,-0.187 1.25,-0.562 0.35,-0.225 0.7,-0.05 0.35,0.175 0.45,0.55 0.075,0.375 0.113,0.762Q22,11.6 22,12q0,2.075 -0.788,3.9 -0.787,1.825 -2.137,3.175 -1.35,1.35 -3.175,2.137Q14.075,22 12,22Z"/>
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="m12 6v6l4 2m6-2c0 5.5228-4.4772 10-10 10-5.52285 0-10-4.4772-10-10 0-5.52285 4.47715-10 10-10 5.5228 0 10 4.47715 10 10z"/>
 </vector>

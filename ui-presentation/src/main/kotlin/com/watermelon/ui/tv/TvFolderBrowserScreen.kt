@@ -42,11 +42,20 @@ import com.watermelon.ui.viewmodel.FolderViewModel
  * entire TV app's only reachable surface with no path to Settings at all, so VHS/subtitle/
  * tuner-seekbar preferences (all set from [com.watermelon.ui.screens.SettingsScreen]) were
  * unreachable on TV regardless of remote input.
+ *
+ * This screen is also the TV app's root/home surface (there is no bottom nav bar or side rail
+ * on TV — see [com.watermelon.app.MainActivity]'s TV branching of `shouldShowBottomBar`).
+ * Rather than introduce a second navigation paradigm, "All Videos" and "Playlists" are pinned
+ * rows here alongside Settings, extending the same pattern this screen already established for
+ * reaching Settings — so there's one coherent TV home instead of three competing entry points.
+ * Folder/playlist rows below them are unchanged.
  */
 @Composable
 fun TvFolderBrowserScreen(
     viewModel: FolderViewModel,
     onFolderClick: (FolderNode) -> Unit,
+    onAllVideosClick: () -> Unit,
+    onPlaylistsClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -83,6 +92,50 @@ fun TvFolderBrowserScreen(
             ) {
                 androidx.compose.material3.Text(
                     text = "Settings",
+                    modifier = Modifier.padding(WatermelonSpacing.md)
+                )
+            }
+        }
+        item(key = "tv_all_videos_entry") {
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
+            androidx.compose.material3.Surface(
+                onClick = onAllVideosClick,
+                interactionSource = interaction,
+                shape = WatermelonShapes.card,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = if (focused) 3.dp else 0.dp,
+                        color = if (focused) MaterialTheme.colorScheme.secondary else Color.Transparent,
+                        shape = WatermelonShapes.card
+                    )
+            ) {
+                androidx.compose.material3.Text(
+                    text = "All Videos",
+                    modifier = Modifier.padding(WatermelonSpacing.md)
+                )
+            }
+        }
+        item(key = "tv_playlists_entry") {
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
+            androidx.compose.material3.Surface(
+                onClick = onPlaylistsClick,
+                interactionSource = interaction,
+                shape = WatermelonShapes.card,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = if (focused) 3.dp else 0.dp,
+                        color = if (focused) MaterialTheme.colorScheme.secondary else Color.Transparent,
+                        shape = WatermelonShapes.card
+                    )
+            ) {
+                androidx.compose.material3.Text(
+                    text = "Playlists",
                     modifier = Modifier.padding(WatermelonSpacing.md)
                 )
             }

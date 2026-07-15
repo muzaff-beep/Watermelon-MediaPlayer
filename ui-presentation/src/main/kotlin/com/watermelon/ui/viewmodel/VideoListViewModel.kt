@@ -25,7 +25,13 @@ class VideoListViewModel(
     private val mediaRepository: MediaRepository,
     private val folderPath: String,
     private val playlistRepository: PlaylistRepository? = null,
-    val isPlaylist: Boolean = false
+    val isPlaylist: Boolean = false,
+    /** True for the "Videos" bottom-nav tab: aggregates every video across every folder
+     *  already tracked by the app (see [folderRepository]/[folderVisibilityStore] below),
+     *  rather than one specific folder or playlist. [folderPath] is ignored in this mode. */
+    val isAllVideos: Boolean = false,
+    private val folderRepository: com.watermelon.common.repository.FolderRepository? = null,
+    private val folderVisibilityStore: com.watermelon.common.repository.FolderVisibilityStore? = null
 ) : ViewModel() {
 
     private val _isShuffled   = MutableStateFlow(false)
@@ -34,16 +40,39 @@ class VideoListViewModel(
     val isShuffled: StateFlow<Boolean>       = _isShuffled.asStateFlow()
     val selection: StateFlow<SelectionState> = _selection.asStateFlow()
 
-    private val sourceVideos: kotlinx.coroutines.flow.Flow<List<MediaItem>> =
-        if (isPlaylist && playlistRepository != null) {
+    private val sourceVideos: kotlinx.coroutines.flow.Flow<List<MediaItem>> = when {
+        isAllVideos && folderRepository != null -> {
+            com.watermelon.common.util.FileLogger.i("VideoList", "source = all tracked videos")
+            // Aggregates strictly from folders the app has already scanned/indexed
+            // (FolderRepository.observeFolderTree, the exact same source the Folders
+            // screen itself uses) — deliberately NOT a fresh recursive filesystem walk.
+            // A folder is included as long as it's tracked, regardless of whether it's on
+            // internal or external (SD card / USB) storage — FolderNode carries a
+            // [FolderNode.volume] label but nothing filters on it, so both are included
+            // automatically. Hidden folders (Settings > Folder visibility) are excluded,
+            // matching how every other screen already treats "hidden" as "not part of
+            // the library" rather than a videos-tab-specific rule.
+            kotlinx.coroutines.flow.combine(
+                mediaRepository.observeAllMedia(),
+                folderRepository.observeFolderTree(),
+                folderVisibilityStore?.visibilityVersion ?: kotlinx.coroutines.flow.MutableStateFlow(0)
+            ) { allMedia, trackedFolders, _ ->
+                val hidden = folderVisibilityStore?.getHiddenFolders() ?: emptySet()
+                val trackedPaths = trackedFolders.map { it.path }.toSet() - hidden
+                allMedia.filter { it.parentFolder in trackedPaths }
+            }
+        }
+        isPlaylist && playlistRepository != null -> {
             com.watermelon.common.util.FileLogger.i("VideoList", "source = playlist '$folderPath'")
             playlistRepository.observeVideos(folderPath)
-        } else {
+        }
+        else -> {
             com.watermelon.common.util.FileLogger.i("VideoList", "source = folder '$folderPath'")
             mediaRepository.observeAllMedia().map { all ->
                 all.filter { it.parentFolder == folderPath }
             }
         }
+    }
 
     val videos: StateFlow<List<MediaItem>> = combine(
         sourceVideos,

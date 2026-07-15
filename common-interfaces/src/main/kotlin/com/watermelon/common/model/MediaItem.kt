@@ -9,6 +9,9 @@ package com.watermelon.common.model
  * [lastPlayedAt] — epoch-ms when playback last started. null = never played (⭐ new).
  * [dateAdded]    — epoch-ms from MediaStore DATE_ADDED. Used for Date sort and
  *                  Recently Added (last 7 days). 0 = unknown.
+ * [dateModified] — epoch-ms from MediaStore DATE_MODIFIED (the file's own content
+ *                  modification time, distinct from when it was indexed/added). Used by
+ *                  the Folder screen's "Modified" sort. 0 = unknown.
  * [fileExtension]— lower-case extension without dot (mp4, mkv, avi). Used for File Type sort.
  */
 data class MediaItem(
@@ -23,6 +26,7 @@ data class MediaItem(
     val firstSeenAt: Long = 0L,
     val lastPlayedAt: Long? = null,
     val dateAdded: Long = 0L,
+    val dateModified: Long = 0L,
     val fileExtension: String = ""
 ) {
     /** Total pixel count, used for Quality sort (higher = better quality). */

@@ -21,9 +21,15 @@ data class FolderNode(
     val hasNewFiles: Boolean = false,
     val playlistId: String? = null,
     val playlistType: PlaylistType? = null,
-    /** Epoch-ms of the most recently added video in this folder/playlist (max dateAdded
-     *  across its items). 0 = unknown. Shown on Small-size rows as "last modified". */
-    val lastModifiedAt: Long = 0L
+    /** Epoch-ms of the most recently modified video in this folder/playlist (max
+     *  MediaItem.dateModified across its items — the files' own content modification
+     *  time, not when they were indexed/added, and not this folder's own filesystem
+     *  mtime). 0 = unknown. Shown on Small-size rows as "last modified", and used by the
+     *  folder screen's "Modified" sort. */
+    val lastModifiedAt: Long = 0L,
+    /** Sum of MediaItem.fileSize across this folder/playlist's videos, in bytes. Used by
+     *  the folder screen's "Size" sort — distinct from itemCount (used by "Video Count"). */
+    val totalSizeBytes: Long = 0L
 ) {
     val isPlaylist: Boolean get() = playlistId != null
     val isSystemPlaylist: Boolean get() =

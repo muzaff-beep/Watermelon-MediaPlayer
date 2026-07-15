@@ -48,7 +48,7 @@ import com.watermelon.ui.viewmodel.BrowserRow
 import com.watermelon.ui.viewmodel.FolderViewModel
 
 enum class FolderLayout { LIST, GRID }
-enum class FolderSort { NAME, DATE, SIZE, RESOLUTION }
+enum class FolderSort { NAME, SIZE, MODIFIED, VIDEO_COUNT }
 
 private val LayoutSaver = androidx.compose.runtime.saveable.Saver<FolderLayout, String>(
     save = { it.name },
@@ -75,9 +75,9 @@ fun FolderBrowserScreen(
         derivedStateOf {
             val baseComparator: Comparator<FolderNode> = when (currentSort) {
                 FolderSort.NAME -> compareBy { it.displayName.lowercase() }
-                FolderSort.SIZE -> compareBy { it.itemCount }
-                FolderSort.DATE -> compareBy { it.displayName.lowercase() }
-                FolderSort.RESOLUTION -> compareBy { it.displayName.lowercase() }
+                FolderSort.SIZE -> compareBy { it.totalSizeBytes }
+                FolderSort.MODIFIED -> compareBy { it.lastModifiedAt }
+                FolderSort.VIDEO_COUNT -> compareBy { it.itemCount }
             }
             val nodeComparator = if (ascending) baseComparator else java.util.Collections.reverseOrder(baseComparator)
             val folderComparator = Comparator<BrowserRow.Folder> { a, b -> nodeComparator.compare(a.node, b.node) }
@@ -138,7 +138,7 @@ fun FolderBrowserScreen(
             Box {
                 LabeledIconButton(
                     icon = WatermelonIcons.Sort,
-                    label = "Sort: ${currentSort.label()}${if (currentSort.isUnavailable()) " *" else ""}",
+                    label = "Sort: ${currentSort.label()}",
                     onClick = { sortMenuOpen = true }
                 )
                 DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
@@ -146,7 +146,7 @@ fun FolderBrowserScreen(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    opt.label() + if (opt.isUnavailable()) " (uses Name)" else "",
+                                    opt.label(),
                                     style = WatermelonTypography.typography.bodyMedium,
                                     color = WatermelonColors.DarkOnSurface
                                 )
@@ -265,9 +265,7 @@ private fun SectionHeader(title: String) {
 
 private fun FolderSort.label() = when (this) {
     FolderSort.NAME -> "Name"
-    FolderSort.DATE -> "Date"
-    FolderSort.SIZE -> "Count"
-    FolderSort.RESOLUTION -> "Resolution"
+    FolderSort.SIZE -> "Size"
+    FolderSort.MODIFIED -> "Modified"
+    FolderSort.VIDEO_COUNT -> "Video Count"
 }
-
-private fun FolderSort.isUnavailable() = this == FolderSort.DATE || this == FolderSort.RESOLUTION

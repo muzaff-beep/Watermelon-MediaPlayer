@@ -12,6 +12,7 @@ import com.watermelon.storage.db.migrations.MigrationV6ToV7
 import com.watermelon.storage.db.migrations.MigrationV7ToV8
 import com.watermelon.storage.db.migrations.MigrationV8ToV9
 import com.watermelon.storage.db.migrations.MigrationV9ToV10
+import com.watermelon.storage.db.migrations.MigrationV10ToV11
 
 /**
  * Hand-written [SQLiteOpenHelper] (no Room). Schema is frozen — Handover §2.2 / Manifest §10.1.
@@ -53,6 +54,7 @@ class WatermelonDatabase(context: Context) : SQLiteOpenHelper(
                 7 -> MigrationV7ToV8.migrate(db)
                 8 -> MigrationV8ToV9.migrate(db)
                 9 -> MigrationV9ToV10.migrate(db)
+                10 -> MigrationV10ToV11.migrate(db)
             }
         }
         com.watermelon.common.util.FileLogger.i("DB", "migrations complete, now at v$toVersion")
@@ -105,6 +107,6 @@ class WatermelonDatabase(context: Context) : SQLiteOpenHelper(
 
     companion object {
         const val DATABASE_NAME = "watermelon.db"
-        const val DATABASE_VERSION = 10
+        const val DATABASE_VERSION = 11
     }
 }

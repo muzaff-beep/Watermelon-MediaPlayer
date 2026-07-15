@@ -60,6 +60,7 @@ class MediaRepositoryImpl(
     private fun android.database.Cursor.toMediaItem(): MediaItem {
         val lastPlayedIdx = getColumnIndex("lastPlayedAt")
         val dateAddedIdx  = getColumnIndex("dateAdded")
+        val dateModifiedIdx = getColumnIndex("dateModified")
         val name          = getString(getColumnIndexOrThrow("displayName"))
         return MediaItem(
             uri          = getString(getColumnIndexOrThrow("mediaId")),
@@ -74,6 +75,7 @@ class MediaRepositoryImpl(
             lastPlayedAt = if (lastPlayedIdx >= 0 && !isNull(lastPlayedIdx))
                                getLong(lastPlayedIdx) else null,
             dateAdded    = if (dateAddedIdx >= 0) getLong(dateAddedIdx) else 0L,
+            dateModified = if (dateModifiedIdx >= 0) getLong(dateModifiedIdx) else 0L,
             fileExtension = name.substringAfterLast('.', "").lowercase()
         )
     }

@@ -53,7 +53,10 @@ class FolderViewModel(
             .mapValues { (_, items) -> items.sumOf { it.durationMs } }
         val lastModifiedByFolder = allMedia
             .groupBy { it.parentFolder }
-            .mapValues { (_, items) -> items.maxOf { it.dateAdded } }
+            .mapValues { (_, items) -> items.maxOf { it.dateModified } }
+        val sizeByFolder = allMedia
+            .groupBy { it.parentFolder }
+            .mapValues { (_, items) -> items.sumOf { it.fileSize } }
         val newFolderSet = allMedia
             .filter { it.lastPlayedAt == null }
             .map { it.parentFolder }
@@ -66,7 +69,8 @@ class FolderViewModel(
                 folder.copy(
                     totalDurationMs = durationByFolder[folder.path] ?: 0L,
                     hasNewFiles     = folder.path in newFolderSet,
-                    lastModifiedAt  = lastModifiedByFolder[folder.path] ?: 0L
+                    lastModifiedAt  = lastModifiedByFolder[folder.path] ?: 0L,
+                    totalSizeBytes  = sizeByFolder[folder.path] ?: 0L
                 )
             }
 

@@ -51,6 +51,7 @@ fun TvPlayerControls(
     onSkipNext: () -> Unit,
     onSubtitleNudge: (Long) -> Unit,
     onSeekHold: (direction: Int) -> Unit,
+    onExit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -64,6 +65,20 @@ fun TvPlayerControls(
                     Key.DirectionRight -> { onSeekHold(+1); true }
                     Key.DirectionUp -> { onSubtitleNudge(+100L); true }
                     Key.DirectionDown -> { onSubtitleNudge(-100L); true }
+                    // Media keys — some remotes send these instead of / in addition to D-pad.
+                    // Rewind/FastForward reuse the same 10s step and hold-to-repeat behavior
+                    // as D-pad Left/Right for consistency.
+                    Key.MediaPlayPause -> {
+                        onIntent(if (isPlaying) UserIntent.Pause else UserIntent.Resume); true
+                    }
+                    Key.MediaPlay -> { onIntent(UserIntent.Resume); true }
+                    Key.MediaPause -> { onIntent(UserIntent.Pause); true }
+                    Key.MediaNext -> { if (hasNextTrack) onSkipNext(); true }
+                    Key.MediaPrevious -> { if (hasPreviousTrack) onSkipPrevious(); true }
+                    Key.MediaRewind -> { onSeekHold(-1); true }
+                    Key.MediaFastForward -> { onSeekHold(+1); true }
+                    // Back exits the player, matching the confirmed remote-control map.
+                    Key.Back -> { onExit(); true }
                     else -> false
                 }
             },

@@ -179,14 +179,21 @@ fun VideoListItem(
                         StatusBadge.New(modifier = Modifier.padding(start = WatermelonSpacing.xs))
                     }
                 }
+                // Parent folder name — list view only (grid rows are too compact for it,
+                // and the spec explicitly calls out grid as unaffected). Shown regardless
+                // of Small/Large: Large appends it after duration since that's its only
+                // metadata line; Small appends it to its existing resolution/size/date line.
+                val folderSuffix = if (!isGrid) " · ${item.parentFolder}" else ""
                 Text(
-                    text = formatDuration(item.durationMs),
+                    text = formatDuration(item.durationMs) + if (itemSize == VideoItemSize.LARGE) folderSuffix else "",
                     style = WatermelonTypography.timecode,
-                    color = WatermelonColors.DarkOnSurfaceVariant
+                    color = WatermelonColors.DarkOnSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (itemSize == VideoItemSize.SMALL) {
                     Text(
-                        text = formatDetailLine(item),
+                        text = formatDetailLine(item) + folderSuffix,
                         style = WatermelonTypography.typography.bodySmall,
                         color = WatermelonColors.DarkOnSurfaceVariant,
                         maxLines = 1,

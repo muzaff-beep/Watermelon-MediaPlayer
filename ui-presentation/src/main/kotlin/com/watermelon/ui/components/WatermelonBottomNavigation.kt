@@ -39,7 +39,7 @@ enum class BottomNavItem(
         label = "Folders"
     ),
     VIDEOS(
-        route = "videos",
+        route = "all_videos",
         iconRes = R.drawable.ic_video_file,
         selectedIconRes = R.drawable.ic_video_file,
         label = "Videos"

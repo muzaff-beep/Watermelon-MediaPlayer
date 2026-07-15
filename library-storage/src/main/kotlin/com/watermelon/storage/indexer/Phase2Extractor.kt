@@ -47,7 +47,8 @@ class Phase2Extractor(
             MediaStore.Video.Media.WIDTH,
             MediaStore.Video.Media.HEIGHT,
             MediaStore.Video.Media.MIME_TYPE,
-            MediaStore.Video.Media.DATE_ADDED
+            MediaStore.Video.Media.DATE_ADDED,
+            MediaStore.Video.Media.DATE_MODIFIED
         )
 
         // Batch the `_ID IN (...)` filter so a large library doesn't exceed SQLite's
@@ -69,6 +70,7 @@ class Phase2Extractor(
                 val idxHeight      = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
                 val idxMime        = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)
                 val idxDateAdded   = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
+                val idxDateModified = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
 
                 while (cursor.moveToNext()) {
                     val id          = cursor.getLong(idxId)
@@ -83,25 +85,26 @@ class Phase2Extractor(
                     val height      = cursor.getInt(idxHeight)
                     val mime        = cursor.getString(idxMime) ?: ""
                     val dateAdded   = cursor.getLong(idxDateAdded) * 1000L  // seconds -> ms
+                    val dateModified = cursor.getLong(idxDateModified) * 1000L  // seconds -> ms
 
                     // 1. INSERT OR IGNORE — sets firstSeenAt only for new rows.
                     db.execSQL(
                         """INSERT OR IGNORE INTO MediaItems
                            (mediaId,fileSize,displayName,parentFolder,
-                            durationMs,width,height,mimeType,firstSeenAt,dateAdded)
-                           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                            durationMs,width,height,mimeType,firstSeenAt,dateAdded,dateModified)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                         arrayOf(uriString, size, displayName, bucket,
-                                duration, width, height, mime, now, dateAdded)
+                                duration, width, height, mime, now, dateAdded, dateModified)
                     )
 
                     // 2. UPDATE — refreshes metadata; never touches firstSeenAt or lastPlayedAt.
                     db.execSQL(
                         """UPDATE MediaItems SET
                            fileSize=?,displayName=?,parentFolder=?,
-                           durationMs=?,width=?,height=?,mimeType=?,dateAdded=?
+                           durationMs=?,width=?,height=?,mimeType=?,dateAdded=?,dateModified=?
                            WHERE mediaId=?""",
                         arrayOf(size, displayName, bucket,
-                                duration, width, height, mime, dateAdded, uriString)
+                                duration, width, height, mime, dateAdded, dateModified, uriString)
                     )
                 }
             }

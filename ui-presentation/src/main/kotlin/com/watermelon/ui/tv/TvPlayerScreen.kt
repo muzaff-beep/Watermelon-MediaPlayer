@@ -56,6 +56,7 @@ fun TvPlayerScreen(
     hasNextTrack: Boolean,
     onSkipPrevious: () -> Unit,
     onSkipNext: () -> Unit,
+    onExit: () -> Unit,
     subtitleTrack: ParsedSubtitle? = null,
     subtitleStyle: SubtitleStyle = SubtitleStyle(),
     modifier: Modifier = Modifier
@@ -148,6 +149,7 @@ fun TvPlayerScreen(
                 onIntent = viewModel::onIntent,
                 onSkipPrevious = onSkipPrevious,
                 onSkipNext = onSkipNext,
+                onExit = onExit,
                 onSubtitleNudge = { deltaMs -> liveOffsetMs += deltaMs },
                 onSeekHold = { direction ->
                     val target = (positionMs + direction * SEEK_STEP_MS).coerceIn(0L, durationMs)

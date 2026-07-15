@@ -235,9 +235,13 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Determine if bottom navigation bar should be shown.
-     * Hide for full-screen player and PiP mode.
+     * Hide for full-screen player and PiP mode, and hide unconditionally on TV — TV has no
+     * touch-oriented bottom nav at all; its root/home surface is TvFolderBrowserScreen's own
+     * pinned Settings/All Videos/Playlists rows (D-pad rows, not a bottom bar), reached at the
+     * same Routes.FOLDERS start destination every device uses.
      */
     private fun shouldShowBottomBar(destination: NavDestination?): Boolean {
+        if (com.watermelon.ui.screens.PlayerDeviceRouting.isTelevision(this)) return false
         return destination?.route != "player/{uri}" && !isPiPActive
     }
 
@@ -460,9 +464,13 @@ class MainActivity : ComponentActivity() {
                 if (isTelevision) {
                     // D-pad-navigable row list with visible focus rings — no grid/sort/filter
                     // chrome, which are touch affordances that don't map to a 10-foot D-pad UI.
+                    // Also the TV app's root nav surface (see shouldShowBottomBar) — All Videos
+                    // and Playlists are pinned rows here rather than reached via a bottom bar.
                     com.watermelon.ui.tv.TvFolderBrowserScreen(
                         viewModel = vm,
                         onFolderClick = onFolderClick,
+                        onAllVideosClick = { navController.navigate(Routes.ALL_VIDEOS) },
+                        onPlaylistsClick = { navController.navigate(Routes.PLAYLISTS) },
                         onSettingsClick = { navController.navigate(Routes.SETTINGS) }
                     )
                 } else {
@@ -473,15 +481,60 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+            composable(Routes.ALL_VIDEOS) {
+                val vm = remember {
+                    VideoListViewModel(
+                        mediaRepository = mediaRepository,
+                        folderPath = "",
+                        isAllVideos = true,
+                        folderRepository = folderRepository,
+                        folderVisibilityStore = settingsStore
+                    )
+                }
+                val isTelevision = remember {
+                    com.watermelon.ui.screens.PlayerDeviceRouting.isTelevision(this@MainActivity)
+                }
+                if (isTelevision) {
+                    com.watermelon.ui.tv.TvVideoListScreen(
+                        viewModel = vm,
+                        title = "All Videos",
+                        onVideoClick = { item -> navController.navigate("player/${Uri.encode(item.uri)}") }
+                    )
+                } else {
+                    val playlists by playlistRepository.observeAll()
+                        .collectAsStateWithLifecycle(initialValue = emptyList())
+                    VideoListScreen(
+                        viewModel = vm,
+                        onVideoClick = { item -> navController.navigate("player/${Uri.encode(item.uri)}") },
+                        availablePlaylists = playlists,
+                        folderName = "Videos",
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+            }
             composable(Routes.PLAYLISTS) {
                 val vm = remember { PlaylistViewModel(playlistRepository) }
-                PlaylistsScreen(
-                    viewModel = vm,
-                    onPlaylistClick = { playlist ->
-                        navController.navigate("videos/${Uri.encode(playlist.id)}?isPlaylist=true")
-                    },
-                    continueWatchingEnabled = settingsState.continueWatchingEnabled
-                )
+                val isTelevision = remember {
+                    com.watermelon.ui.screens.PlayerDeviceRouting.isTelevision(this@MainActivity)
+                }
+                if (isTelevision) {
+                    com.watermelon.ui.tv.TvPlaylistsScreen(
+                        viewModel = vm,
+                        onPlaylistClick = { playlist ->
+                            navController.navigate("videos/${Uri.encode(playlist.id)}?isPlaylist=true")
+                        },
+                        onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                        continueWatchingEnabled = settingsState.continueWatchingEnabled
+                    )
+                } else {
+                    PlaylistsScreen(
+                        viewModel = vm,
+                        onPlaylistClick = { playlist ->
+                            navController.navigate("videos/${Uri.encode(playlist.id)}?isPlaylist=true")
+                        },
+                        continueWatchingEnabled = settingsState.continueWatchingEnabled
+                    )
+                }
             }
             composable(Routes.FAVORITES) {
                 LaunchedEffect(Unit) {
@@ -504,15 +557,27 @@ class MainActivity : ComponentActivity() {
                 val vm = remember(folderPath) {
                     VideoListViewModel(mediaRepository, folderPath, playlistRepository, isPlaylist)
                 }
-                val playlists by playlistRepository.observeAll()
-                    .collectAsStateWithLifecycle(initialValue = emptyList())
-                VideoListScreen(
-                    viewModel = vm,
-                    onVideoClick = { item -> navController.navigate("player/${Uri.encode(item.uri)}") },
-                    availablePlaylists = playlists,
-                    folderName = if (isPlaylist) "Playlist" else folderPath.substringAfterLast("/"),
-                    onBack = { navController.popBackStack() }
-                )
+                val screenTitle = if (isPlaylist) "Playlist" else folderPath.substringAfterLast("/")
+                val isTelevision = remember {
+                    com.watermelon.ui.screens.PlayerDeviceRouting.isTelevision(this@MainActivity)
+                }
+                if (isTelevision) {
+                    com.watermelon.ui.tv.TvVideoListScreen(
+                        viewModel = vm,
+                        title = screenTitle,
+                        onVideoClick = { item -> navController.navigate("player/${Uri.encode(item.uri)}") }
+                    )
+                } else {
+                    val playlists by playlistRepository.observeAll()
+                        .collectAsStateWithLifecycle(initialValue = emptyList())
+                    VideoListScreen(
+                        viewModel = vm,
+                        onVideoClick = { item -> navController.navigate("player/${Uri.encode(item.uri)}") },
+                        availablePlaylists = playlists,
+                        folderName = screenTitle,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
             }
             composable(
                 route = "player/{uri}",
@@ -625,7 +690,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
+                            onExit = { navController.popBackStack() },
                             subtitleTrack = subtitleTrackState,
+                            subtitleStyle = settingsState.subtitleStyle,
                             surface = { modifier ->
                                 AndroidView(
                                     modifier = modifier,
@@ -794,6 +861,7 @@ class MainActivity : ComponentActivity() {
 
     private object Routes {
         const val FOLDERS = "folders"
+        const val ALL_VIDEOS = "all_videos"
         const val SETTINGS = "settings"
         const val FOLDER_VISIBILITY = "folder_visibility"
         const val DESIGN_SYSTEM = "design_system"  // NEW

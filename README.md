@@ -1,3 +1,10 @@
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Build](https://img.shields.io/github/actions/workflow/status/muzaff-beep/Watermelon-MediaPlayer/build-judge.yml)
+![Android SDK](https://img.shields.io/badge/minSdk-23-brightgreen)
+![Target SDK](https://img.shields.io/badge/targetSdk-35-blue)
+![Stars](https://img.shields.io/github/stars/muzaff-beep/Watermelon-MediaPlayer)
+
 # Watermelon MediaPlayer
 
 Offline-first, privacy-respecting local video player for Android (mobile + TV), engineered

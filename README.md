@@ -1,9 +1,15 @@
+
+![Kotlin](https://img.shields.io/badge/kotlin-2.0.0-purple)
 ![Status](https://img.shields.io/badge/status-active-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Build](https://img.shields.io/github/actions/workflow/status/muzaff-beep/Watermelon-MediaPlayer/build-judge.yml)
 ![Android SDK](https://img.shields.io/badge/minSdk-23-brightgreen)
 ![Target SDK](https://img.shields.io/badge/targetSdk-35-blue)
-![Stars](https://img.shields.io/github/stars/muzaff-beep/Watermelon-MediaPlayer)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+![Build](https://img.shields.io/github/actions/workflow/status/muzaff-beep/Watermelon-MediaPlayer/build-judge.yml)·
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+![Migrations](https://img.shields.io/badge/migrations-zero--data--loss-blue)
+![FPS](https://img.shields.io/badge/scroll_pps-60-brightgreen)
 
 # Watermelon MediaPlayer
 

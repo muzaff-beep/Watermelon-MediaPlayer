@@ -46,43 +46,7 @@ python3 scripts/verify_interfaces.py   # every interface has an *Impl
 > build-judge.yml`) performs the full Android build, unit tests, benchmarks, and the
 > migration-ladder gate.
 
-## Android TV support
-
-TV runs as a fully separate composition layer, not a retrofit of the phone screens.
-`PlayerDeviceRouting.isTelevision()` branches at every route in `MainActivity`'s
-`NavHost`; the phone screen and its `Tv*` counterpart share the same ViewModel/data
-layer but never share Compose UI code.
-
-| Surface | Phone | TV |
-|---|---|---|
-| Root nav | Bottom `NavigationBar` | None — pinned D-pad rows (Settings / All Videos / Playlists) on `TvFolderBrowserScreen`, the TV root/home surface |
-| Folder browsing | `FolderListScreen` | `TvFolderBrowserScreen` |
-| Video list (All Videos + folder/playlist contents) | `VideoListScreen` (sort toolbar, long-press multi-select) | `TvVideoListScreen` (plain D-pad row list; no sort chrome or multi-select — no long-press concept on a D-pad) |
-| Playlists | `PlaylistsScreen` | `TvPlaylistsScreen` (create/rename/delete via always-visible focusable buttons per row, not long-press/overflow) |
-| Player | Touch controls | `TvPlayerScreen` + `TvPlayerControls` — D-pad seek/subtitle-offset, media-key and Back-key handling (see table below) |
-
-**TV remote key map** (`TvPlayerControls.kt`):
-
-| Key | Behavior |
-|---|---|
-| D-pad Left / Right | Seek ∓10s (hold repeats) |
-| D-pad Up / Down | Subtitle offset ±100ms |
-| OK / Center | Activates focused button |
-| Media Play/Pause/Play/Pause | Toggle / resume / pause |
-| Media Next / Previous | Skip track |
-| Media Rewind / Fast Forward | Seek ∓10s, same step as D-pad |
-| Back | Exit player |
-| Volume Up/Down/Mute | System default (unhandled by app) |
-
-**Known gap, flagged not silently assumed:** playlist create/rename on TV uses a
-standard `AlertDialog` + `TextField`, relying on the default Android on-screen
-keyboard for D-pad text entry. This has not been manually verified on real TV
-hardware/emulator. Same caveat applies to media-key behavior above — confirm on
-an actual remote before shipping.
-
-See `PHASE_1_2_3_SUMMARY.md` for the full change log across all three build phases.
-
-
+## Quality gates (CI)
 
 - 60 fps p95 scroll on a 1,000-item folder
 - Folder index visible before Phase-2 metadata extraction completes

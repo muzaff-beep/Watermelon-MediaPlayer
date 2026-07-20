@@ -30,7 +30,6 @@ import com.watermelon.common.model.MediaItem
 import com.watermelon.ui.theme.WatermelonShapes
 import com.watermelon.ui.theme.WatermelonSpacing
 import com.watermelon.ui.viewmodel.VideoListViewModel
-import kotlinx.coroutines.launch
 
 /**
  * D-Pad-optimised video list for Android TV. Serves both the All Videos destination and any
@@ -56,7 +55,6 @@ fun TvVideoListScreen(
     modifier: Modifier = Modifier
 ) {
     val videos by viewModel.videos.collectAsStateWithLifecycle()
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     Column(modifier = modifier.fillMaxSize()) {
         Text(
@@ -103,21 +101,7 @@ fun TvVideoListScreen(
                 val interaction = remember { MutableInteractionSource() }
                 val focused by interaction.collectIsFocusedAsState()
                 Surface(
-                    onClick = {
-                        // Mirrors VideoListScreen's phone-side click handler: mark played,
-                        // then resolve+seed PlaybackQueue BEFORE navigating — without this,
-                        // TvPlayerScreen's next/prev and auto-advance-on-end have nothing to
-                        // read (empty queue), and the Continue-Watching-never-skip-itself
-                        // scoping (resolvePlaybackQueueUris routes to the video's real
-                        // parent folder when opened from Continue Watching) never gets a
-                        // chance to apply, since it's only invoked here.
-                        viewModel.markPlayed(item.uri)
-                        coroutineScope.launch {
-                            val queueUris = viewModel.resolvePlaybackQueueUris(item.uri, videos)
-                            com.watermelon.ui.screens.PlaybackQueue.set(queueUris)
-                            onVideoClick(item)
-                        }
-                    },
+                    onClick = { onVideoClick(item) },
                     interactionSource = interaction,
                     shape = WatermelonShapes.card,
                     color = MaterialTheme.colorScheme.surfaceVariant,

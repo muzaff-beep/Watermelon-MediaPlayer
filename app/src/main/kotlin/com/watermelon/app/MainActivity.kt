@@ -127,6 +127,15 @@ class MainActivity : ComponentActivity() {
     private var mediaController by mutableStateOf<MediaController?>(null)
     private var playbackController: PlaybackController? = null
 
+    // Mini-player: which URI is "in session" (loaded into the shared MediaController),
+    // independent of which screen is currently shown. Set the moment the player route issues
+    // UserIntent.Play; cleared on mini-player Close or natural end with an empty queue. This is
+    // deliberately separate from NavHost back-stack state — the whole point of a mini-player is
+    // that it survives navigating away from the player route, so its visibility can't be driven
+    // by "is the player route the current destination".
+    private var miniPlayerUri by mutableStateOf<String?>(null)
+    private var isMuted by mutableStateOf(false)
+
     private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
     private var permissionsGranted by mutableStateOf(false)
     private var playbackMode by mutableStateOf(PlaybackMode.NORMAL)
@@ -204,6 +213,13 @@ class MainActivity : ComponentActivity() {
                 // Track current destination for bottom navigation
                 val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
+                // Mini-player is visible only when something is loaded AND we're not already
+                // looking at the full player screen — showing both at once would be redundant
+                // and would also mean two PlayerViews racing to attach to the same Player
+                // (Media3 only keeps the most-recently-attached view live).
+                val onPlayerRoute = currentDestination?.route == "player/{uri}"
+                val showMiniPlayer = miniPlayerUri != null && !onPlayerRoute && !isPiPActive
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
@@ -215,18 +231,110 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    if (permissionsGranted) {
-                        WatermelonNavHost(
-                            navController = navController,
-                            pureDarkTheme = pureDarkTheme,
-                            onPureDarkThemeChange = { enabled ->
-                                pureDarkTheme = enabled
-                                prefs.edit().putBoolean("pure_dark", enabled).apply()
-                            },
-                            modifier = Modifier.padding(innerPadding)
-                        )
-                    } else {
-                        PermissionPrompt(onRequest = { permissionLauncher.launch(requiredPermissions) })
+                    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                        val miniUri = miniPlayerUri
+                        val controller = mediaController
+                        val pbController = playbackController
+                        if (miniUri != null && controller != null && pbController != null) {
+                            val position by pbController.currentPositionMs.collectAsStateWithLifecycle()
+                            val playbackState by pbController.playbackState.collectAsStateWithLifecycle()
+                            var miniDurationMs by remember(miniUri) {
+                                mutableStateOf(controller.duration.coerceAtLeast(0L))
+                            }
+                            DisposableEffect(controller, miniUri) {
+                                val listener = object : Player.Listener {
+                                    override fun onEvents(player: Player, events: Player.Events) {
+                                        if (events.containsAny(
+                                                Player.EVENT_TIMELINE_CHANGED,
+                                                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                                                Player.EVENT_PLAYBACK_STATE_CHANGED
+                                            )
+                                        ) {
+                                            miniDurationMs = player.duration.coerceAtLeast(0L)
+                                        }
+                                        // Natural end with an empty queue closes the mini-player
+                                        // entirely, matching the spec's dismissal conditions
+                                        // (Close / restore-tap / natural end with empty queue).
+                                        if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) &&
+                                            player.playbackState == Player.STATE_ENDED &&
+                                            com.watermelon.ui.screens.PlaybackQueue.nextOf(miniUri) == null
+                                        ) {
+                                            miniPlayerUri = null
+                                        }
+                                    }
+                                }
+                                controller.addListener(listener)
+                                onDispose { controller.removeListener(listener) }
+                            }
+                            val miniTitle = remember(miniUri) {
+                                Uri.decode(miniUri).substringAfterLast('/')
+                            }
+                            com.watermelon.ui.components.MiniPlayerBar(
+                                visible = showMiniPlayer,
+                                title = miniTitle,
+                                isPlaying = playbackState == PlaybackState.PLAYING,
+                                isMuted = isMuted,
+                                progressFraction = if (miniDurationMs > 0)
+                                    (position.toFloat() / miniDurationMs.toFloat()).coerceIn(0f, 1f) else 0f,
+                                hasNext = com.watermelon.ui.screens.PlaybackQueue.nextOf(miniUri) != null,
+                                hasPrevious = com.watermelon.ui.screens.PlaybackQueue.previousOf(miniUri) != null,
+                                videoSurface = { mod ->
+                                    AndroidView(
+                                        modifier = mod,
+                                        factory = { ctx ->
+                                            val view = android.view.LayoutInflater.from(ctx)
+                                                .inflate(R.layout.player_view_texture, null) as PlayerView
+                                            view.player = controller
+                                            view.useController = false
+                                            view
+                                        }
+                                    )
+                                },
+                                onRestore = {
+                                    navController.navigate("player/${Uri.encode(miniUri)}") {
+                                        popUpTo("player/{uri}") { inclusive = true }
+                                    }
+                                },
+                                onPlayPause = {
+                                    if (playbackState == PlaybackState.PLAYING) pbController.pause()
+                                    else pbController.resume()
+                                },
+                                onNext = {
+                                    com.watermelon.ui.screens.PlaybackQueue.nextOf(miniUri)?.let { next ->
+                                        miniPlayerUri = next
+                                        pbController.play(next)
+                                    }
+                                },
+                                onPrevious = {
+                                    com.watermelon.ui.screens.PlaybackQueue.previousOf(miniUri)?.let { prev ->
+                                        miniPlayerUri = prev
+                                        pbController.play(prev)
+                                    }
+                                },
+                                onMuteToggle = {
+                                    isMuted = !isMuted
+                                    controller.volume = if (isMuted) 0f else 1f
+                                },
+                                onClose = {
+                                    pbController.pause()
+                                    miniPlayerUri = null
+                                }
+                            )
+                        }
+                        if (permissionsGranted) {
+                            WatermelonNavHost(
+                                navController = navController,
+                                pureDarkTheme = pureDarkTheme,
+                                onPureDarkThemeChange = { enabled ->
+                                    pureDarkTheme = enabled
+                                    prefs.edit().putBoolean("pure_dark", enabled).apply()
+                                },
+                                onPlayerUriChanged = { uri -> miniPlayerUri = uri },
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            PermissionPrompt(onRequest = { permissionLauncher.launch(requiredPermissions) })
+                        }
                     }
                 }
             }
@@ -434,6 +542,7 @@ class MainActivity : ComponentActivity() {
         navController: NavHostController,
         pureDarkTheme: Boolean,
         onPureDarkThemeChange: (Boolean) -> Unit,
+        onPlayerUriChanged: (String) -> Unit,
         modifier: Modifier = Modifier
     ) {
         var settingsState by remember {
@@ -592,7 +701,10 @@ class MainActivity : ComponentActivity() {
                     }
                 } else {
                     val vm = remember(pbController) { PlayerViewModel(pbController) }
-                    LaunchedEffect(mediaUri) { vm.onIntent(UserIntent.Play(mediaUri)) }
+                    LaunchedEffect(mediaUri) {
+                        vm.onIntent(UserIntent.Play(mediaUri))
+                        onPlayerUriChanged(mediaUri)
+                    }
 
                     var isFavourite by remember(mediaUri) { mutableStateOf(false) }
                     LaunchedEffect(mediaUri) {

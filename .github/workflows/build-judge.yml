@@ -154,8 +154,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # Compile-only: real scroll/startup benchmark numbers need physical
-      # hardware and are not run in CI, matching README's description of
-      # this module as macrobenchmarks rather than a CI-gated test suite.
+      # benchmarks is a com.android.test module with a custom "benchmark"
+      # build type (not "debug" — androidComponents.beforeVariants disables
+      # every variant except "benchmark"), so assembleDebug does not exist.
       - name: Assemble benchmarks
-        run: ./gradlew :benchmarks:assembleDebug --stacktrace
+        run: ./gradlew :benchmarks:assembleBenchmark --stacktrace

@@ -1,0 +1,148 @@
+name: build-judge
+
+# Quality gates referenced in README.md:
+#   - full Android build
+#   - unit tests
+#   - benchmarks module compiles
+#   - migration-ladder gate (library-storage's androidTest, MigrationTest.kt)
+#   - verify_interfaces.py — every interface in common-interfaces has an *Impl
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  interfaces:
+    name: Verify interfaces have implementations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run verify_interfaces.py
+        run: python3 scripts/verify_interfaces.py
+
+  build-and-unit-test:
+    name: Build (all modules) + unit tests
+    runs-on: ubuntu-latest
+    needs: interfaces
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # Full Android build across every module (requires dl.google.com for
+      # AGP/AndroidX/Compose/Media3 — see README's note on restricted-network
+      # environments where only :common-interfaces builds).
+      - name: Build all modules
+        run: ./gradlew build --stacktrace
+
+      - name: Run unit tests
+        run: ./gradlew test --stacktrace
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: '**/build/reports/tests/'
+          retention-days: 14
+
+  migration-ladder:
+    name: Migration-ladder gate (library-storage androidTest)
+    runs-on: ubuntu-latest
+    needs: interfaces
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Enable KVM (for emulator)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Zero-data-loss SQLite migrations (PlaybackPositions / SubtitleOffsets
+      # never dropped) — see README, "Zero-data-loss SQLite migrations".
+      - name: Run MigrationTest on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: ./gradlew :library-storage:connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.watermelon.storage.db.MigrationTest --stacktrace
+
+      - name: Upload instrumented test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-ladder-reports
+          path: 'library-storage/build/reports/androidTests/'
+          retention-days: 14
+
+  benchmarks-compile:
+    name: Benchmarks module compiles
+    runs-on: ubuntu-latest
+    needs: interfaces
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # Compile-only: real scroll/startup benchmark numbers need physical
+      # hardware and are not run in CI, matching README's description of
+      # this module as macrobenchmarks rather than a CI-gated test suite.
+      - name: Assemble benchmarks
+        run: ./gradlew :benchmarks:assembleDebug --stacktrace

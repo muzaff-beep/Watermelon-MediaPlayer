@@ -64,6 +64,19 @@ jobs:
       - name: Run unit tests
         run: ./gradlew test --stacktrace
 
+      # Debug APK — auto-signed with AGP's default debug keystore, no
+      # signingConfig needed. app/build.gradle.kts has no release signing
+      # config yet, so only debug is built here.
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4

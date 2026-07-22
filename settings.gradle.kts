@@ -21,6 +21,7 @@ include(
     ":playback-engine",
     ":library-storage",
     ":subtitle-engine",
+    ":media-tools",
     ":ui-presentation",
     ":app",
     ":benchmarks"

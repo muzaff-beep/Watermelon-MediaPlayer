@@ -6,8 +6,15 @@
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <!-- Needed for MediaStore.insert() of media-tools output on API 28 and below;
+         scoped storage (API 29+) doesn't require this for a collection insert. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- media-tools' MediaJobService (trim/compress/extract jobs) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
@@ -60,6 +67,12 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
+
+        <!-- Foreground service for media-tools trim/compress/extract jobs -->
+        <service
+            android:name="com.watermelon.mediatools.service.MediaJobService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 

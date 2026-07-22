@@ -46,7 +46,20 @@ class FolderVisibilityStoreImpl(context: Context) : FolderVisibilityStore {
         prefs.edit().putString(key, value).apply()
     }
 
+    // ── media-tools output paths (compressed/trimmed video destinations) ──────────
+    // User-configurable per product requirement. Values are MediaStore RELATIVE_PATH
+    // strings (e.g. "Movies/Watermelon/compressed") -- see OutputFileStore for how
+    // they're consumed, and its note on the API < 29 RELATIVE_PATH limitation.
+
+    fun getCompressedOutputPath(): String = getString(KEY_COMPRESSED_PATH, "Movies/Watermelon/compressed")
+    fun setCompressedOutputPath(path: String) = putString(KEY_COMPRESSED_PATH, path)
+
+    fun getTrimmedOutputPath(): String = getString(KEY_TRIMMED_PATH, "Movies/Watermelon/trimmed")
+    fun setTrimmedOutputPath(path: String) = putString(KEY_TRIMMED_PATH, path)
+
     companion object {
         private const val KEY_HIDDEN_FOLDERS = "hidden_folders"
+        private const val KEY_COMPRESSED_PATH = "media_tools_compressed_path"
+        private const val KEY_TRIMMED_PATH = "media_tools_trimmed_path"
     }
 }
